@@ -1,4 +1,7 @@
 The MIT License
 ===============
 
-Copyright (C) 2022-2023 Volkswagen Aktiengesel
+Copyright (C) 2022-2023 Volkswagen Aktiengesellschaft,
+Berliner Ring 2, 38440 Wolfsburg, Germany
+
+Permission is hereby granted, free of
