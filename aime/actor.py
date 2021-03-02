@@ -10,4 +10,7 @@ from aime.data import ArrayDict
 class RandomActor:
     """Actor that random samples from the action space"""
 
-    def 
+    def __init__(self, action_space) -> None:
+        self.action_space = action_space
+
+    def __call__(self, obs):
