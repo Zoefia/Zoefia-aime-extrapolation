@@ -26,4 +26,8 @@ class PolicyActor:
     def __init__(self, ssm, policy, eval=True) -> None:
         """
         ssm          : a state space model
-        policy       : a policy take a hidden state and output th
+        policy       : a policy take a hidden state and output the distribution of actions
+        """  # noqa: E501
+        self.ssm = ssm
+        self.policy = policy
+     
