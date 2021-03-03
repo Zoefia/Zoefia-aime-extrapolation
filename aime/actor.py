@@ -20,4 +20,8 @@ class RandomActor:
         pass
 
 
-class PolicyAct
+class PolicyActor:
+    """Model-based policy for taking actions"""
+
+    def __init__(self, ssm, policy, eval=True) -> None:
+    
