@@ -30,4 +30,8 @@ class PolicyActor:
         """  # noqa: E501
         self.ssm = ssm
         self.policy = policy
-     
+        self.eval = eval
+
+    def reset(self):
+        self.state = self.ssm.reset(1)
+        self.model_paramet
