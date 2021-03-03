@@ -38,4 +38,7 @@ class PolicyActor:
 
     def __call__(self, obs):
         obs = ArrayDict(deepcopy(obs))
-     
+        obs.to_torch()
+        obs.expand_dim_equal_()
+        obs.to(self.model_parameter)
+        obs.vma
