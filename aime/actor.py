@@ -34,4 +34,8 @@ class PolicyActor:
 
     def reset(self):
         self.state = self.ssm.reset(1)
-        self.model_paramet
+        self.model_parameter = list(self.ssm.parameters())[0]
+
+    def __call__(self, obs):
+        obs = ArrayDict(deepcopy(obs))
+     
