@@ -24,4 +24,6 @@ class PolicyActor:
     """Model-based policy for taking actions"""
 
     def __init__(self, ssm, policy, eval=True) -> None:
-    
+        """
+        ssm          : a state space model
+        policy       : a policy take a hidden state and output th
