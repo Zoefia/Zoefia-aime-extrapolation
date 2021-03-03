@@ -14,3 +14,10 @@ class RandomActor:
         self.action_space = action_space
 
     def __call__(self, obs):
+        return self.action_space.sample()
+
+    def reset(self):
+        pass
+
+
+class PolicyAct
