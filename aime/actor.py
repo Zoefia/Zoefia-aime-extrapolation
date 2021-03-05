@@ -41,4 +41,6 @@ class PolicyActor:
         obs.to_torch()
         obs.expand_dim_equal_()
         obs.to(self.model_parameter)
-        obs.vma
+        obs.vmap_(lambda v: v.unsqueeze(dim=0))
+
+        self.state, _ = self.ssm.posterior_step(obs, obs["pre_action"], self.state
