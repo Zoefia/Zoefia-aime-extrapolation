@@ -43,4 +43,7 @@ class PolicyActor:
         obs.to(self.model_parameter)
         obs.vmap_(lambda v: v.unsqueeze(dim=0))
 
-        self.state, _ = self.ssm.posterior_step(obs, obs["pre_action"], self.state
+        self.state, _ = self.ssm.posterior_step(obs, obs["pre_action"], self.state)
+        state_feature = self.ssm.get_state_feature(self.state)
+        action_dist = self.policy(state_feature)
+     
