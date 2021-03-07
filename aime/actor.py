@@ -46,4 +46,5 @@ class PolicyActor:
         self.state, _ = self.ssm.posterior_step(obs, obs["pre_action"], self.state)
         state_feature = self.ssm.get_state_feature(self.state)
         action_dist = self.policy(state_feature)
-     
+        action = action_dist.mode if self.eval else action_dist.sample()
+        action = action
