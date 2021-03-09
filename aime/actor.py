@@ -47,4 +47,10 @@ class PolicyActor:
         state_feature = self.ssm.get_state_feature(self.state)
         action_dist = self.policy(state_feature)
         action = action_dist.mode if self.eval else action_dist.sample()
-        action = action
+        action = action.detach().cpu().numpy()[0]
+
+        return action
+
+
+class StackPolicyActor:
+    """Actor fo
