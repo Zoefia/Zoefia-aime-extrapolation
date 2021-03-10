@@ -55,4 +55,8 @@ class PolicyActor:
 class StackPolicyActor:
     """Actor for the BCO policy, who needs a stack of observation to operate"""
 
-    def __init__(self, encoder, policy, 
+    def __init__(self, encoder, policy, stack: int) -> None:
+        self.encoder = encoder
+        self.policy = policy
+        self.stack = stack
+      
