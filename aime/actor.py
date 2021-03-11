@@ -63,4 +63,8 @@ class StackPolicyActor:
 
     def reset(self):
         self.embs = []
-        self.model_parameter = list(self.policy.parame
+        self.model_parameter = list(self.policy.parameters())[0]
+
+    def __call__(self, obs):
+        obs = ArrayDict(deepcopy(obs))
+        obs.to_t
