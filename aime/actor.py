@@ -59,4 +59,8 @@ class StackPolicyActor:
         self.encoder = encoder
         self.policy = policy
         self.stack = stack
-      
+        self.embs = []
+
+    def reset(self):
+        self.embs = []
+        self.model_parameter = list(self.policy.parame
