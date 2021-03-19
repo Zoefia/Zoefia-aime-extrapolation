@@ -67,4 +67,7 @@ class StackPolicyActor:
 
     def __call__(self, obs):
         obs = ArrayDict(deepcopy(obs))
-        obs.to_t
+        obs.to_torch()
+        obs.expand_dim_equal_()
+        obs.to(self.model_parameter)
+        obs.vmap_(lambda v: v.uns
