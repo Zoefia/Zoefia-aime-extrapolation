@@ -70,4 +70,8 @@ class StackPolicyActor:
         obs.to_torch()
         obs.expand_dim_equal_()
         obs.to(self.model_parameter)
-        obs.vmap_(lambda v: v.uns
+        obs.vmap_(lambda v: v.unsqueeze(dim=0))
+        emb = self.encoder(obs)
+
+        if len(self.embs) == 0:
+            for _ in range
