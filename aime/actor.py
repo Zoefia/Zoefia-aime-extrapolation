@@ -74,4 +74,7 @@ class StackPolicyActor:
         emb = self.encoder(obs)
 
         if len(self.embs) == 0:
-            for _ in range
+            for _ in range(self.stack):
+                self.embs.append(emb)
+        else:
+            self.embs.pop(
