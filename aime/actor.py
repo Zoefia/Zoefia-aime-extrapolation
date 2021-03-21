@@ -77,4 +77,9 @@ class StackPolicyActor:
             for _ in range(self.stack):
                 self.embs.append(emb)
         else:
-            self.embs.pop(
+            self.embs.pop(0)
+            self.embs.append(emb)
+
+        emb = torch.stack(self.embs)
+
+        emb = rearrange(emb, "t b f -> b (t f)
