@@ -82,4 +82,9 @@ class StackPolicyActor:
 
         emb = torch.stack(self.embs)
 
-        emb = rearrange(emb, "t b f -> b (t f)
+        emb = rearrange(emb, "t b f -> b (t f)")
+
+        action = self.policy(emb)
+        action = action.detach().cpu().numpy()[0]
+
+        return actio
