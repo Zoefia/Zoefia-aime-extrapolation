@@ -92,3 +92,6 @@ class StackPolicyActor:
 
 class GuassianNoiseActorWrapper:
     def __init__(self, actor, noise_level, action_space) -> None:
+        self._actor = actor
+        self.noise_level = noise_level
+        self.action_space = action_s
