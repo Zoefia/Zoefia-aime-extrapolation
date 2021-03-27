@@ -87,4 +87,8 @@ class StackPolicyActor:
         action = self.policy(emb)
         action = action.detach().cpu().numpy()[0]
 
-        return actio
+        return action
+
+
+class GuassianNoiseActorWrapper:
+    def __init__(self, actor, noise_level, action_space) -> None:
