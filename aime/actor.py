@@ -100,4 +100,6 @@ class GuassianNoiseActorWrapper:
         return self._actor.reset()
 
     def __call__(self, obs):
-        action
+        action = self._actor(obs)
+        action = action + self.noise_level * np.random.randn(*action.shape)
+        action = np
