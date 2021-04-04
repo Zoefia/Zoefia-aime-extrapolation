@@ -6,4 +6,9 @@ defaults:
 model_name: ???
 demonstration_dataset_name: ???
 
-freeze_model: T
+freeze_model: True
+random_policy: True
+num_expert_trajectories: 100
+algo_name: aime
+seed: 42
+log_name: "${env.name}/${environme
