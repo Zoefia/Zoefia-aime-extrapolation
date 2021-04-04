@@ -1,2 +1,9 @@
 defaults:
   - _self_
+  - env: ???
+  - world_model: rssmo
+
+model_name: ???
+demonstration_dataset_name: ???
+
+freeze_model: T
