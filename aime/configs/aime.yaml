@@ -11,4 +11,6 @@ random_policy: True
 num_expert_trajectories: 100
 algo_name: aime
 seed: 42
-log_name: "${env.name}/${environment_setup}/${algo_name}/${demonstration_dataset_name}/${model_name}/${num_expert_trajectories}/us
+log_name: "${env.name}/${environment_setup}/${algo_name}/${demonstration_dataset_name}/${model_name}/${num_expert_trajectories}/use_idm=${use_idm}/${world_model.idm_mode}/kl_only=${kl_only}"
+horizon: 50
+batch_siz
