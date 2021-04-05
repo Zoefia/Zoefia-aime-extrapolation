@@ -13,4 +13,9 @@ algo_name: aime
 seed: 42
 log_name: "${env.name}/${environment_setup}/${algo_name}/${demonstration_dataset_name}/${model_name}/${num_expert_trajectories}/use_idm=${use_idm}/${world_model.idm_mode}/kl_only=${kl_only}"
 horizon: 50
-batch_siz
+batch_size: 50
+batch_per_epoch: 100
+epoch: 500
+test_period: 10
+num_test_trajectories: 10
+final_num_test_trajec
