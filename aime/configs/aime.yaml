@@ -28,3 +28,13 @@ environment_setup: visual
 
 use_idm: False
 kl_only: False
+
+env:
+  action_repeat: 2
+  render: False
+
+world_model:
+  nll_reweight: dim_wise
+  idm_mode: detach
+
+  min_st
