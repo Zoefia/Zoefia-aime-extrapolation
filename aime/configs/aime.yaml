@@ -37,4 +37,13 @@ world_model:
   nll_reweight: dim_wise
   idm_mode: detach
 
-  min_st
+  min_std: null
+
+  kl_scale: 1.0
+  free_nats: 0.0
+  kl_rebalance: null
+
+  encoders:
+    tabular:
+      name: identity
+    vi
