@@ -53,4 +53,11 @@ world_model:
     tabular:
       name: smlp
       hidden_size: 128
-      hidden
+      hidden_layers: 2
+    visual:
+      name: cnn_ha
+
+  probes:
+    tabular:
+      name: dmlp
+      hidden_size: 1
