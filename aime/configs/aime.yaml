@@ -70,4 +70,5 @@ policy:
   hidden_layers: 2
 
 vnet:
-  hi
+  hidden_size: 128
+  hidden_layers: 2
