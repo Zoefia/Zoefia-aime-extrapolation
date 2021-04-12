@@ -7,4 +7,9 @@ demonstration_dataset_name: ??
 algo_name: bc
 seed: 42
 log_name: "${env.name}/${environment_setup}/${demonstration_dataset_name}/${algo_name}/${seed}"
-stac
+stack: 5
+batch_size: 50
+train_validation_split_ratio: 0.7
+num_expert_trajectories: 100
+num_test_trajectories: 100
+patie
