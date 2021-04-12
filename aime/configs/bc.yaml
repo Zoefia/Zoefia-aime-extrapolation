@@ -4,4 +4,7 @@ defaults:
 
 demonstration_dataset_name: ??
 
-algo_name: 
+algo_name: bc
+seed: 42
+log_name: "${env.name}/${environment_setup}/${demonstration_dataset_name}/${algo_name}/${seed}"
+stac
