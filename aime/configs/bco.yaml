@@ -11,4 +11,8 @@ log_name: "${env.name}/${environment_setup}/${embodiment_dataset_name}/${demonst
 stack: 5
 batch_size: 50
 train_validation_split_ratio: 0.7
-num_expert_trajecto
+num_expert_trajectories: 100
+num_test_trajectories: 100
+patience: 3
+min_idm_epoch: 50
+min_idm_steps: 50
