@@ -7,4 +7,4 @@ demonstration_dataset_name: ??
 
 algo_name: bco
 seed: 42
-log_
+log_name: "${env.name}/${environment_setup}/${embodiment_dataset_name}/${demonstration_dataset_name}/${num_exp
