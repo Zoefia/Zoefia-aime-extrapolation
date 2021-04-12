@@ -20,4 +20,14 @@ idm_lr : 1e-3
 policy_lr: 1e-3
 grad_clip: 100.0
 
-environment_setup: lp
+environment_setup: lpomdp
+
+env:
+  action_repeat: 2
+  render: False
+
+encoders:
+  tabular:
+    name: identity
+  visual:
+  
