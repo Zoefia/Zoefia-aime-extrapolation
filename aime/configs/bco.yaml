@@ -7,4 +7,8 @@ demonstration_dataset_name: ??
 
 algo_name: bco
 seed: 42
-log_name: "${env.name}/${environment_setup}/${embodiment_dataset_name}/${demonstration_dataset_name}/${num_exp
+log_name: "${env.name}/${environment_setup}/${embodiment_dataset_name}/${demonstration_dataset_name}/${num_expert_trajectories}/${algo_name}/${seed}"
+stack: 5
+batch_size: 50
+train_validation_split_ratio: 0.7
+num_expert_trajecto
