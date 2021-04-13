@@ -32,4 +32,14 @@ env:
 
 encoders:
   tabular:
-    nam
+    name: identity
+  visual:
+    name: cnn_ha
+
+idm:
+  hidden_size: 128
+  hidden_layers: 2
+
+policy:
+  hidden_size: 128
+  hidden_la
