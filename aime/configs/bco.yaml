@@ -15,4 +15,11 @@ num_expert_trajectories: 100
 num_test_trajectories: 100
 patience: 3
 min_idm_epoch: 50
-min_idm_steps: 50
+min_idm_steps: 5000
+min_policy_epoch: 50
+min_policy_steps: 5000
+render: True
+
+idm_lr : 1e-3
+policy_lr: 1e-3
+grad_clip: 10
