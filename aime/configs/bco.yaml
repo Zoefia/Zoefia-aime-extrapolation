@@ -42,4 +42,4 @@ idm:
 
 policy:
   hidden_size: 128
-  hidden_la
+  hidden_layers: 2
