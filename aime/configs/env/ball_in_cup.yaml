@@ -6,4 +6,11 @@ supported_tasks: [catch]
 action_repeat: 4
 sensors:
   position:
- 
+    modility: tabular
+    order: first
+  velocity:
+    modility: tabular
+    order: second
+  image:
+    modility: visual
+    order:
