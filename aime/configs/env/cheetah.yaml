@@ -6,4 +6,10 @@ supported_tasks: [run, runbackward, flip, flipbackward]
 action_repeat: 2
 sensors:
   position:
-  
+    modility: tabular
+    order: first
+  velocity:
+    modility: tabular
+    order: second
+  image:
+    modility: vis
