@@ -2,4 +2,10 @@ class: dmc
 name: "${env.embodiment}-${env.task}"
 embodiment: finger
 task: spin
-s
+supported_tasks: [spin, turn_easy, turn_hard]
+action_repeat: 2
+sensors:
+  position:
+    modility: tabular
+    order: first
+  to
