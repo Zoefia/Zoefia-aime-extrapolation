@@ -1,0 +1,5 @@
+class: dmc
+name: "${env.embodiment}-${env.task}"
+embodiment: finger
+task: spin
+s

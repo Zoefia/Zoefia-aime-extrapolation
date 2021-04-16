@@ -12,4 +12,5 @@ sensors:
     modility: tabular
     order: second
   image:
-    modility: vis
+    modility: visual
+    order: first
