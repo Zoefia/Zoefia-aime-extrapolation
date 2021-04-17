@@ -8,4 +8,11 @@ sensors:
   position:
     modility: tabular
     order: first
-  to
+  touch:
+    modility: tabular 
+    order: first
+  velocity:
+    modility: tabular
+    order: second
+  image:
+    modility: 
