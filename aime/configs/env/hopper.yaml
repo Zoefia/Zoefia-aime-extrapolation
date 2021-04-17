@@ -1,8 +1,9 @@
+
 class: dmc
 name: "${env.embodiment}-${env.task}"
-embodiment: finger
-task: spin
-supported_tasks: [spin, turn_easy, turn_hard]
+embodiment: hopper
+task: stand
+supported_tasks: [stand, hop]
 action_repeat: 2
 sensors:
   position:
