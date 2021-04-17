@@ -1,4 +1,9 @@
 class: dmc
 name: "${env.embodiment}-${env.task}"
 embodiment: humanoid
-tas
+task: stand
+supported_tasks: [stand, walk, run]
+action_repeat: 2
+sensors:
+  joint_angles:
+    mod
