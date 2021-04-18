@@ -6,4 +6,9 @@ supported_tasks: [stand, walk, run]
 action_repeat: 2
 sensors:
   joint_angles:
-    mod
+    modility: tabular
+    order: first
+  head_height:
+    modility: tabular 
+    order: first
+  extremitie
