@@ -11,4 +11,9 @@ sensors:
   head_height:
     modility: tabular 
     order: first
-  extremitie
+  extremities:
+    modility: tabular 
+    order: first    
+  torso_vertical:
+    modility: tabular 
+    order: first
