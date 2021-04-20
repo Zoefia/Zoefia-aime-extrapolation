@@ -17,3 +17,11 @@ sensors:
   torso_vertical:
     modility: tabular 
     order: first
+  com_velocity:
+    modility: tabular
+    order: second
+  velocity:
+    modility: tabular
+    order: second
+  image:
+    modility: 
