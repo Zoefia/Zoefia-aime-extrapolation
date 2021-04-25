@@ -1,0 +1,5 @@
+class: dmc
+name: "${env.embodiment}-${env.task}"
+embodiment: reacher
+task: easy
+supported_tasks: [easy, hard
