@@ -10,4 +10,10 @@ sensors:
     order: first
   to_target:
     modility: tabular 
-    order: f
+    order: first
+  velocity:
+    modility: tabular
+    order: second
+  image:
+    modility: visual
+    order: first
