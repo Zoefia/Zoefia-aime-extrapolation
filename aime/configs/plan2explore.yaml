@@ -1,2 +1,8 @@
 defaults:
-  - _se
+  - _self_
+  - env: ???
+  - world_model: rssmo
+
+algo_name: plan2explore
+seed: 42
+log_name: "${env.name}/${environment_setup
