@@ -5,4 +5,10 @@ defaults:
 
 algo_name: plan2explore
 seed: 42
-log_name: "${env.name}/${environment_setup
+log_name: "${env.name}/${environment_setup}/${algo_name}/${seed}"
+horizon: 50
+batch_size: 50
+batch_per_epoch: 100
+epoch: 995
+prefill: 5
+pretraining
