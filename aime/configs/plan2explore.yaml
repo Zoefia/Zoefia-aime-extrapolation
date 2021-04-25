@@ -11,4 +11,11 @@ batch_size: 50
 batch_per_epoch: 100
 epoch: 995
 prefill: 5
-pretraining
+pretraining_iterations: 100
+epsilon: 0
+gamma: 0.99
+lambda: 0.95
+imagine_horizon: 15
+policy_entropy_scale: 1e-4
+
+pretraine
