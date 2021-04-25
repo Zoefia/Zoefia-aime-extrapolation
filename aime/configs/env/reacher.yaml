@@ -2,4 +2,12 @@ class: dmc
 name: "${env.embodiment}-${env.task}"
 embodiment: reacher
 task: easy
-supported_tasks: [easy, hard
+supported_tasks: [easy, hard]
+action_repeat: 4
+sensors:
+  position:
+    modility: tabular
+    order: first
+  to_target:
+    modility: tabular 
+    order: f
