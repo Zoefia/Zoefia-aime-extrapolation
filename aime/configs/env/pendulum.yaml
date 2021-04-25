@@ -9,4 +9,8 @@ sensors:
     modility: tabular
     order: first
   velocity:
-    mo
+    modility: tabular
+    order: second
+  image:
+    modility: visual
+    order: first
