@@ -34,3 +34,9 @@ env:
 
 world_model:
   nll_reweight: dim_wise
+  idm_mode: detach
+
+  intrinsic_reward_config:
+    num_ensembles: 5
+    hidden_size: 1024
+    hidden_layers: 2
