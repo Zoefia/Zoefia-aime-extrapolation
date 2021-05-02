@@ -64,4 +64,11 @@ world_model:
   probes:
     tabular:
       name: dmlp
-      hidden_
+      hidden_size: 128
+      hidden_layers: 2
+    visual: 
+      name: cnn_ha
+
+policy:
+  hidden_size: 128
+  hidden_layers: 
