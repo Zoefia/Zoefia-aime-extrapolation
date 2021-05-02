@@ -40,3 +40,12 @@ world_model:
     num_ensembles: 5
     hidden_size: 1024
     hidden_layers: 2
+
+  min_std: null
+
+  kl_scale: 1.0
+  free_nats: 0.0
+  kl_rebalance: null
+
+  encoders:
+    tabular:
