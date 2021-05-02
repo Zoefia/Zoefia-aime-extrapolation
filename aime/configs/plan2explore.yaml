@@ -56,4 +56,12 @@ world_model:
   decoders:
     tabular:
       name: smlp
-      hidden_size:
+      hidden_size: 128
+      hidden_layers: 2
+    visual:
+      name: cnn_ha
+
+  probes:
+    tabular:
+      name: dmlp
+      hidden_
