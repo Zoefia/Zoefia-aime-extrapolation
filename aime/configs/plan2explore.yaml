@@ -49,3 +49,11 @@ world_model:
 
   encoders:
     tabular:
+      name: identity
+    visual:
+      name: cnn_ha
+
+  decoders:
+    tabular:
+      name: smlp
+      hidden_size:
