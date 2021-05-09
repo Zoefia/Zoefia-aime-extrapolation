@@ -71,4 +71,8 @@ world_model:
 
 policy:
   hidden_size: 128
-  hidden_layers: 
+  hidden_layers: 2
+
+vnet:
+  hidden_size: 128
+  hidden_layers: 2
