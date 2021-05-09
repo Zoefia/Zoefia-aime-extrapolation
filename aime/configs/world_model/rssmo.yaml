@@ -1,2 +1,4 @@
 name: rssmo
-s
+state_dim: [512, 30]
+hidden_size: 512
+hidden_layers: 2 # this is mainly for the idm in this model
