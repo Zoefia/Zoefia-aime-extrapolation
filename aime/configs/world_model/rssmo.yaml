@@ -2,3 +2,13 @@ name: rssmo
 state_dim: [512, 30]
 hidden_size: 512
 hidden_layers: 2 # this is mainly for the idm in this model
+norm: ln
+
+nll_reweight: none
+idm_mode: detach
+
+min_std: 0.1
+
+kl_scale: 1.0
+free_nats: 1.0
+kl_rebalance: 
