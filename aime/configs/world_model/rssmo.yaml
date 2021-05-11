@@ -18,4 +18,13 @@ encoders:
     name: mlp
     hidden_size: 512
     hidden_layers: 2
-    hidden_activation: swis
+    hidden_activation: swish
+    norm: ln
+    have_head: false
+  visual:
+    name: cnn_ha
+
+decoders:
+  tabular:
+    name: dmlp
+    hidden_siz
