@@ -42,3 +42,4 @@ probes:
     hidden_activation: swish
     norm: ln
   visual: 
+    name: cnn_ha
