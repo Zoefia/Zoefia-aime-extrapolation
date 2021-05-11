@@ -161,3 +161,117 @@ class DMC(gym.Env):
             reward += time_step.reward or 0.0
             if time_step.last():
                 break
+        assert time_step.discount in (0, 1)
+        obs = {
+            "reward": reward,
+            "is_first": False,
+            "is_last": time_step.last(),
+            "is_terminal": time_step.discount == 0,
+            "pre_action": action,
+        }
+        if self._render:
+            obs.update(self.render())
+        obs.update(
+            {
+                k: v.reshape((-1))
+                for k, v in dict(time_step.observation).items()
+                if k not in self._ignored_keys
+            }
+        )
+        if self._reward_fn is not None:
+            obs["reward"] = self._reward_fn(obs)
+        return obs
+
+    def reset(self):
+        time_step = self._env.reset()
+        obs = {
+            "reward": 0.0,
+            "is_first": True,
+            "is_last": False,
+            "is_terminal": False,
+        }
+        if self._render:
+            obs.update(self.render())
+        obs.update(
+            {
+                k: v.reshape((-1))
+                for k, v in dict(time_step.observation).items()
+                if k not in self._ignored_keys
+            }
+        )
+        obs["pre_action"] = np.zeros(self.act_space.sample().shape)
+        return obs
+
+    def render(self):
+        return {"image": self._env.physics.render(*self._size, camera_id=self._camera)}
+
+    @property
+    def set_state_from_obs_support(self):
+        return self._obs_to_state_fn is not None
+
+    def set_state_from_obs(self, obs):
+        """
+        Set the state of the robot to the one defined by an observation. Mainly for rendering.
+        NOTE: This is not support for all environments! Please check `set_state_from_obs_support` before use.
+        """  # noqa: E501
+        assert (
+            self.set_state_from_obs_support
+        ), "`set_state_from_obs` is not supported for this environment!"
+        state = self._obs_to_state_fn(obs)
+        self._env.physics.set_state(state)
+        self._env.physics.after_reset()
+
+
+class SaveTrajectories(gym.Wrapper):
+    def __init__(self, env: gym.Env, root: str):
+        super().__init__(env)
+        self.root = root
+        if not os.path.exists(self.root):
+            os.makedirs(self.root)
+        self.trajectory_count = 0
+        self.trajectory_data = []
+
+    def reset(self, **kwargs):
+        obs = super().reset(**kwargs)
+        self.trajectory_data.append(ArrayDict(obs))
+        return obs
+
+    def step(self, action):
+        obs = super().step(action)
+        self.trajectory_data.append(ArrayDict(obs))
+        if obs.get("is_last", False) or obs.get("is_terminal", False):
+            if len(self.trajectory_data) > 0:
+                data = ArrayDict.stack(self.trajectory_data, dim=0)
+                data.expand_dim_equal_()
+                np.savez_compressed(
+                    os.path.join(self.root, f"{self.trajectory_count}.npz"), **data
+                )
+                self.trajectory_count += 1
+                self.trajectory_data = []
+        return obs
+
+
+class TerminalSummaryWrapper(gym.Wrapper):
+    def __init__(self, env: gym.Env):
+        super().__init__(env)
+
+    def reset(self, **kwargs):
+        self.reward = 0
+        self.step_count = 0
+        self.start_time = time.time()
+        return super().reset(**kwargs)
+
+    def step(self, action):
+        obs = super().step(action)
+        self.step_count += 1
+        self.reward += obs["reward"]
+        if obs.get("is_last", False) or obs.get("is_terminal", False):
+            log.info(
+                f"Trajectory finished in {self.step_count} steps ({time.time() - self.start_time:.3f} s), with total reward {self.reward}"  # noqa: E501
+            )
+        return obs
+
+
+env_classes = {
+    "dmc": DMC,
+}
