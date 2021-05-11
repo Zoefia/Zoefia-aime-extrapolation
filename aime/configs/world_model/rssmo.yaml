@@ -35,4 +35,10 @@ decoders:
     name: cnn_ha
 
 probes:
-  tabula
+  tabular:
+    name: dmlp
+    hidden_size: 512
+    hidden_layers: 2
+    hidden_activation: swish
+    norm: ln
+  visual: 
