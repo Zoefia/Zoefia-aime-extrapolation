@@ -27,4 +27,12 @@ encoders:
 decoders:
   tabular:
     name: dmlp
-    hidden_siz
+    hidden_size: 512
+    hidden_layers: 2
+    hidden_activation: swish
+    norm: ln
+  visual:
+    name: cnn_ha
+
+probes:
+  tabula
