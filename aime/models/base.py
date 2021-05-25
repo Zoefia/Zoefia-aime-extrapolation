@@ -136,3 +136,103 @@ class IndentityEncoder(nn.Module):
 
 encoder_classes = {
     "mlp": MLP,
+    "identity": IndentityEncoder,
+    "cnn_ha": CNNEncoderHa,
+}
+
+
+class MultimodalEncoder(nn.Module):
+    def __init__(self, config) -> None:
+        super().__init__()
+        self.config = config
+        self.encoders = torch.nn.ModuleDict()
+        for name, dim, encoder_config in self.config:
+            encoder_config = encoder_config.copy()
+            encoder_type = encoder_config.pop("name")
+            self.encoders[name] = encoder_classes[encoder_type](dim, **encoder_config)
+
+        self.output_dim = sum(
+            [encoder.output_dim for name, encoder in self.encoders.items()]
+        )
+
+    def forward(self, obs):
+        return torch.cat(
+            [model(obs[name]) for name, model in self.encoders.items()], dim=-1
+        )
+
+
+class MLPDeterministicDecoder(torch.nn.Module):
+    r"""
+    determinasticly decode the states to outputs.
+    For consistent API, it output a Guassian with \sigma=1,
+    so that the gradient is the same as L2 loss.
+    """
+
+    def __init__(
+        self,
+        state_dim,
+        obs_dim,
+        hidden_size,
+        hidden_layers,
+        norm=None,
+        hidden_activation="elu",
+    ) -> None:
+        super().__init__()
+        self.net = MLP(
+            state_dim,
+            obs_dim,
+            hidden_size,
+            hidden_layers,
+            norm,
+            hidden_activation=hidden_activation,
+        )
+
+    def forward(self, states):
+        obs = self.net(states)
+        return Normal(obs, torch.ones_like(obs))
+
+
+class MLPStochasticDecoder(torch.nn.Module):
+    """
+    decode the states to Gaussian distributions of outputs.
+    """
+
+    def __init__(
+        self,
+        state_dim,
+        obs_dim,
+        hidden_size,
+        hidden_layers,
+        norm=None,
+        min_std=None,
+        hidden_activation="elu",
+    ) -> None:
+        super().__init__()
+        self.min_std = min_std if min_std is not None else MIN_STD
+        self.mu_net = MLP(
+            state_dim,
+            obs_dim,
+            hidden_size,
+            hidden_layers,
+            norm,
+            hidden_activation=hidden_activation,
+        )
+        self.std_net = MLP(
+            state_dim,
+            obs_dim,
+            hidden_size,
+            hidden_layers,
+            norm,
+            hidden_activation=hidden_activation,
+            output_activation="softplus",
+        )
+
+    def forward(self, states):
+        obs_dist = Normal(self.mu_net(states), self.std_net(states) + self.min_std)
+        return obs_dist
+
+
+class MLPStaticStochasticDecoder(torch.nn.Module):
+    """
+    decode the states to Gaussian distributions of outputs with the standard deviation is a learnable global variable.
+    """  # noqa: E501
