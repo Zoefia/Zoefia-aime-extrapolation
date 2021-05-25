@@ -236,3 +236,84 @@ class MLPStaticStochasticDecoder(torch.nn.Module):
     """
     decode the states to Gaussian distributions of outputs with the standard deviation is a learnable global variable.
     """  # noqa: E501
+
+    def __init__(
+        self,
+        state_dim,
+        obs_dim,
+        hidden_size,
+        hidden_layers,
+        norm=None,
+        min_std=None,
+        hidden_activation="elu",
+    ) -> None:
+        super().__init__()
+        self.min_std = min_std if min_std is not None else MIN_STD
+        self.mu_net = MLP(
+            state_dim,
+            obs_dim,
+            hidden_size,
+            hidden_layers,
+            norm,
+            hidden_activation=hidden_activation,
+        )
+        self.log_std = nn.Parameter(torch.zeros(obs_dim))
+
+    def forward(self, states):
+        obs_dist = Normal(self.mu_net(states), torch.exp(self.log_std) + self.min_std)
+        return obs_dist
+
+
+class CNNDecoderHa(nn.Module):
+    """
+    The structure is introduced in Ha and Schmidhuber, World Model.
+    NOTE: The structure only works for 64 x 64 image, pixel range [0, 1].
+    """
+
+    def __init__(self, state_dim, output_size, width=32, *args, **kwargs) -> None:
+        super().__init__()
+        self.latent_dim = state_dim
+        self.output_size = output_size
+        self.net = nn.Sequential(
+            nn.Linear(self.latent_dim, 32 * width),
+            nn.Unflatten(-1, (32 * width, 1, 1)),
+            nn.ConvTranspose2d(32 * width, 4 * width, 5, 2),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(4 * width, 2 * width, 5, 2),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(2 * width, width, 6, 2),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(width, 3, 6, 2),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, state):
+        head_dims = state.shape[:-1]
+        state = state.view(-1, self.latent_dim)
+        output = self.net(state)
+        output = F.interpolate(output, self.output_size)
+        return Normal(output.view(*head_dims, *output.shape[-3:]), 1)
+
+
+decoder_classes = {
+    "dmlp": MLPDeterministicDecoder,
+    "smlp": MLPStochasticDecoder,
+    "ssmlp": MLPStaticStochasticDecoder,
+    "cnn_ha": CNNDecoderHa,
+}
+
+
+class MultimodalDecoder(nn.Module):
+    def __init__(self, emb_dim, config) -> None:
+        super().__init__()
+        self.config = config
+        self.decoders = torch.nn.ModuleDict()
+        for name, dim, decoder_config in self.config:
+            decoder_config = decoder_config.copy()
+            decoder_type = decoder_config.pop("name")
+            self.decoders[name] = decoder_classes[decoder_type](
+                emb_dim, dim, **decoder_config
+            )
+
+    def forward(self, emb):
+        return {name: decoder(emb).mean for name, decoder in self.decoders.items()}
