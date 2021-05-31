@@ -10,4 +10,5 @@ class TanhGaussianPolicy(torch.nn.Module):
         self, state_dim, action_dim, hidden_size=32, hidden_layers=2, min_std=None
     ) -> None:
         super().__init__()
-       
+        self.min_std = min_std if min_std is not None else MIN_STD
+        self.mean_net = MLP(state_dim, action_dim, hidden_size, hidden_l
