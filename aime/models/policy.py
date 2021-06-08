@@ -23,4 +23,9 @@ class TanhGaussianPolicy(torch.nn.Module):
     def forward(self, state):
         mean = self.mean_net(state)
         std = self.std_net(state) + self.min_std
-        return TanhNorma
+        return TanhNormal(mean, std)
+
+
+class GaussianPolicy(torch.nn.Module):
+    def __init__(
+        self, state_dim, action_d
