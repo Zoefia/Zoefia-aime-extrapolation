@@ -36,3 +36,7 @@ class GaussianPolicy(torch.nn.Module):
         self.std_net = MLP(
             state_dim,
             action_dim,
+            hidden_size,
+            hidden_layers,
+            output_activation="softplus",
+        )
