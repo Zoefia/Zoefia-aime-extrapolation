@@ -40,3 +40,8 @@ class GaussianPolicy(torch.nn.Module):
             hidden_layers,
             output_activation="softplus",
         )
+
+    def forward(self, state):
+        mean = self.mean_net(state)
+        std = self.std_net(state) + self.min_std
+        r
