@@ -77,3 +77,118 @@ class SSM(torch.nn.Module):
         self.idm_mode = idm_mode
         assert self.idm_mode in (
             "none",
+            "end2end",
+            "detach",
+        ), f"recieved unknown idm_mode `{self.idm_mode}`."
+        self.min_std = min_std if min_std is not None else MIN_STD
+
+        self.create_network()
+        self.metric_func = torch.nn.MSELoss()
+
+    def create_network(
+        self,
+    ):
+        self.encoders = torch.nn.ModuleDict()
+        for name, dim, encoder_config in self.input_config:
+            encoder_config = encoder_config.copy()
+            encoder_type = encoder_config.pop("name")
+            self.encoders[name] = encoder_classes[encoder_type](dim, **encoder_config)
+
+        self.emb_dim = sum(
+            [encoder.output_dim for name, encoder in self.encoders.items()]
+        )
+
+        self.decoders = torch.nn.ModuleDict()
+        for name, dim, decoder_config in self.output_config:
+            if name == "emb":
+                dim = self.emb_dim
+            decoder_config = decoder_config.copy()
+            decoder_type = decoder_config.pop("name")
+            self.decoders[name] = decoder_classes[decoder_type](
+                self.state_feature_dim, dim, **decoder_config
+            )
+
+        self.probes = torch.nn.ModuleDict()
+        for name, dim, decoder_config in self.probe_config:
+            if name == "emb":
+                dim = self.emb_dim
+            decoder_config = decoder_config.copy()
+            decoder_type = decoder_config.pop("name")
+            self.probes[name] = decoder_classes[decoder_type](
+                self.state_feature_dim, dim, **decoder_config
+            )
+
+        if not (self.idm_mode == "none"):
+            # Inverse Dynamic Model (IDM) is a non-casual policy
+            self.idm = TanhGaussianPolicy(
+                self.state_feature_dim + self.emb_dim,
+                self.action_dim,
+                self.hidden_size,
+                self.hidden_layers,
+            )
+
+        if self.intrinsic_reward_config is not None:
+            self.emb_prediction_heads = torch.nn.ModuleList(
+                [
+                    MLP(
+                        self.state_feature_dim + self.action_dim,
+                        self.emb_dim,
+                        self.intrinsic_reward_config["hidden_size"],
+                        self.intrinsic_reward_config["hidden_layers"],
+                    )
+                    for _ in range(self.intrinsic_reward_config["num_ensembles"])
+                ]
+            )
+
+    def reset(self, batch_size):
+        """reset the hidden state of the SSM"""
+        raise NotImplementedError
+
+    @property
+    def state_feature_dim(self):
+        return self.state_dim
+
+    def stack_states(self, states):
+        return ArrayDict.stack(states, dim=0)
+
+    def flatten_states(self, states):
+        # flatten the sequence of states as the starting state of rollout
+        if isinstance(states, list):
+            states = self.stack_states(states)
+        states.vmap_(lambda v: rearrange(v, "t b f -> (t b) f"))
+        return states
+
+    def get_state_feature(self, state):
+        return state
+
+    def get_emb(self, obs):
+        return torch.cat(
+            [model(obs[name]) for name, model in self.encoders.items()], dim=-1
+        )
+
+    def get_output_dists(self, state_feature, names=None):
+        if names is None:
+            names = self.decoders.keys()
+        return {name: self.decoders[name](state_feature) for name in names}
+
+    def get_outputs(self, state_feature, names=None):
+        if names is None:
+            names = self.decoders.keys()
+        return {name: self.decoders[name](state_feature).mode for name in names}
+
+    def get_probe_dists(self, state_feature, names=None):
+        if names is None:
+            names = self.probes.keys()
+        return {name: self.probes[name](state_feature) for name in names}
+
+    def get_probes(self, state_feature, names=None):
+        if names is None:
+            names = self.probes.keys()
+        return {name: self.probes[name](state_feature).mode for name in names}
+
+    def compute_kl(self, posterior, prior):
+        if self.kl_rebalance is None:
+            return kl_divergence(posterior, prior)
+        else:
+            return self.kl_rebalance * kl_divergence(posterior.detach(), prior) + (
+                1 - self.kl_rebalance
