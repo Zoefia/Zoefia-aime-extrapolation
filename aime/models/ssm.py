@@ -192,3 +192,113 @@ class SSM(torch.nn.Module):
         else:
             return self.kl_rebalance * kl_divergence(posterior.detach(), prior) + (
                 1 - self.kl_rebalance
+            ) * kl_divergence(posterior, prior.detach())
+
+    def forward(self, obs_seq, pre_action_seq, filter_step=None):
+        """the call for training the model"""
+        if filter_step is None:
+            filter_step = len(obs_seq)
+        state = self.reset(obs_seq[self.input_config[0][0]].shape[1])
+        emb_seq = self.get_emb(obs_seq)
+        obs_seq["emb"] = emb_seq.detach()
+
+        states, kls = self.filter(
+            obs_seq[:filter_step],
+            pre_action_seq[:filter_step],
+            emb_seq[:filter_step],
+            state,
+        )
+        states = states + self.rollout(states[-1], pre_action_seq[filter_step:])
+
+        # clamp the kls with free nats, but keep the real value at log
+        clamp_kls = (
+            torch.clamp_min(torch.sum(kls, dim=-1, keepdim=True), self.free_nats)
+            / kls.shape[-1]
+        )
+        kls = clamp_kls + (kls - clamp_kls).detach()
+
+        state_features = torch.stack(
+            [self.get_state_feature(state) for state in states]
+        )
+        output_dists = self.get_output_dists(state_features)
+
+        metrics = {}
+        rec_term = 0
+        for name, dist in output_dists.items():
+            _r_term = torch.mean(
+                torch.flatten(dist.log_prob(obs_seq[name]), 2).sum(dim=-1).sum(dim=0)
+            )
+            rec_term = rec_term + _r_term
+            metrics[f"{name}_mse"] = self.metric_func(dist.mean, obs_seq[name]).item()
+            metrics[f"{name}_rec_term"] = _r_term.item()
+        kl_term = -torch.mean(kls.sum(dim=-1).sum(dim=0))
+        elbo = rec_term + kl_term
+        metrics.update(
+            {
+                "rec_term": rec_term.item(),
+                "kl_term": kl_term.item(),
+                "elbo": elbo.item(),
+            }
+        )
+
+        reconstruction_loss = 0
+        kl_loss = 0
+
+        if self.nll_reweight == "none":
+            reconstruction_loss = -rec_term
+            kl_loss = -kl_term
+        # Reference: Seitzer et. al., On the Pitfalls of Heteroscedastic Uncertainty Estimation with Probabilistic Neural Networks, ICLR 2022  # noqa: E501
+        # NOTE: the original version only reweight the log_prob, but here I think if the likelihood is reweighted, the kl should be reweighted accordingly.  # noqa: E501
+        elif self.nll_reweight == "modility_wise":
+            for name, dist in output_dists.items():
+                _r_loss = -torch.mean(
+                    torch.flatten(
+                        dist.log_prob(obs_seq[name]) * dist.stddev.detach(), 2
+                    )
+                    .sum(dim=-1)
+                    .sum(dim=0)
+                )
+                reconstruction_loss = reconstruction_loss + _r_loss
+                metrics[f"{name}_mse"] = self.metric_func(
+                    dist.mean, obs_seq[name]
+                ).item()
+                metrics[f"{name}_reconstruction_loss"] = _r_loss.item()
+                kl_loss = kl_loss + torch.mean(
+                    (
+                        kls.sum(dim=-1)
+                        * torch.flatten(dist.stddev[: kls.shape[0]], 2)
+                        .detach()
+                        .mean(dim=-1)
+                    ).sum(dim=0)
+                )
+            kl_loss = kl_loss / len(output_dists)
+        elif self.nll_reweight == "dim_wise":
+            total_dims = 0
+            for name, dist in output_dists.items():
+                _r_loss = -torch.mean(
+                    torch.flatten(
+                        dist.log_prob(obs_seq[name]) * dist.stddev.detach(), 2
+                    )
+                    .sum(dim=-1)
+                    .sum(dim=0)
+                )
+                reconstruction_loss = reconstruction_loss + _r_loss
+                metrics[f"{name}_mse"] = self.metric_func(
+                    dist.mean, obs_seq[name]
+                ).item()
+                metrics[f"{name}_reconstruction_loss"] = _r_loss.item()
+                kl_loss = kl_loss + torch.mean(
+                    (
+                        kls.sum(dim=-1, keepdim=True)
+                        * torch.flatten(dist.stddev[: kls.shape[0]], 2).detach()
+                    )
+                    .sum(dim=-1)
+                    .sum(dim=0)
+                )
+                total_dims = total_dims + np.prod(dist.stddev.shape[2:])
+            kl_loss = kl_loss / total_dims
+
+        if self.probe_config is not None:
+            # ad hoc skip the first state because there is no initial state estimator
+            probe_state_features = state_features.detach()[1:]
+            probe_dists = self.get_probe_dists(probe_state_features)
