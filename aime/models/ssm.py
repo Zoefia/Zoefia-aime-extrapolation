@@ -302,3 +302,114 @@ class SSM(torch.nn.Module):
             # ad hoc skip the first state because there is no initial state estimator
             probe_state_features = state_features.detach()[1:]
             probe_dists = self.get_probe_dists(probe_state_features)
+            for name, dist in probe_dists.items():
+                _r_loss = -torch.mean(
+                    dist.log_prob(obs_seq[name][1:]).sum(dim=-1).sum(dim=0)
+                )
+                reconstruction_loss = reconstruction_loss + _r_loss
+                metrics[f"{name}_probe_mse"] = self.metric_func(
+                    dist.mean, obs_seq[name][1:]
+                ).item()
+                metrics[f"{name}_probe_reconstruction_loss"] = _r_loss.item()
+
+        loss = reconstruction_loss + self.kl_scale * kl_loss
+
+        if not (self.idm_mode == "none" or self.idm is None):
+            idm_inputs = torch.cat([state_features[:-1], emb_seq[1:]], dim=-1)
+            if self.idm_mode == "detach":
+                idm_inputs = idm_inputs.detach()
+            action_dist = self.idm(idm_inputs)
+            idm_loss = (
+                -action_dist.log_prob(pre_action_seq[1:]).sum(dim=-1).mean(dim=0).sum()
+            )
+            idm_mse = self.metric_func(action_dist.mode, pre_action_seq[1:])
+
+            metrics.update({"idm_loss": idm_loss.item(), "idm_mse": idm_mse.item()})
+
+            loss = loss + idm_loss
+
+        if self.intrinsic_reward_config is not None:
+            inputs = torch.cat(
+                [state_features[:-1], obs_seq["pre_action"][1:]], dim=-1
+            ).detach()
+            outputs = [head(inputs) for head in self.emb_prediction_heads]
+            target = emb_seq[1:].detach()
+            emb_prediction_loss = sum(
+                [self.metric_func(output, target) for output in outputs]
+            )
+            loss = loss + emb_prediction_loss
+            metrics["emb_prediction_loss"] = emb_prediction_loss.item()
+
+        metrics.update(
+            {
+                "total_loss": loss.item(),
+                "reconstruction_loss": reconstruction_loss.item(),
+                "kl_loss": kl_loss.item(),
+            }
+        )
+
+        return (
+            ArrayDict({name: dist.mean for name, dist in output_dists.items()}),
+            states,
+            loss,
+            metrics,
+        )
+
+    def filter(self, obs_seq, pre_action_seq, emb_seq=None, initial_state=None):
+        if initial_state is None:
+            initial_state = self.reset(obs_seq[self.input_config[0][0]].shape[1])
+        if emb_seq is None:
+            emb_seq = self.get_emb(obs_seq)
+        assert pre_action_seq.shape[0] == emb_seq.shape[0]
+        states = []
+        kls = []
+        state = initial_state
+        for t in range(emb_seq.shape[0]):
+            state, kl = self.posterior_step(None, pre_action_seq[t], state, emb_seq[t])
+            states.append(state)
+            kls.append(kl)
+        kls = torch.stack(kls, dim=0)
+        return states, kls
+
+    def rollout(self, initial_state, action_seq):
+        state = initial_state
+        states = []
+        for t in range(action_seq.shape[0]):
+            state = self.prior_step(action_seq[t], state)
+            states.append(state)
+        return states
+
+    def posterior_step(self, obs, pre_action, state, emb=None, determinastic=False):
+        raise NotImplementedError
+
+    def prior_step(self, pre_action, state, determinastic=False):
+        raise NotImplementedError
+
+    def generate(self, initial_state, action_seq, names=None):
+        states = self.rollout(initial_state, action_seq)
+
+        state_features = torch.stack(
+            [self.get_state_feature(state) for state in states]
+        )
+
+        return states, ArrayDict(self.get_outputs(state_features, names))
+
+    def filter_with_policy(
+        self, obs_seq, policy, idm=None, filter_step=None, kl_only=False
+    ):
+        """
+        Filter the states with a policy that generate actions.
+        This is used for the AIME algorithm for now.
+        """
+        if filter_step is None:
+            filter_step = len(obs_seq)
+        state = self.reset(obs_seq[self.input_config[0][0]].shape[1])
+        emb_seq = self.get_emb(obs_seq)
+
+        states = []
+        kls = []
+        actions_kls = []
+        actions = []
+
+        for t in range(filter_step):
+            if idm is None:
