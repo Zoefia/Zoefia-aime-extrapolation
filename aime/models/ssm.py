@@ -413,3 +413,103 @@ class SSM(torch.nn.Module):
 
         for t in range(filter_step):
             if idm is None:
+                action_dist = policy(self.get_state_feature(state))
+                action = action_dist.rsample()
+            else:
+                state_feature = self.get_state_feature(state)
+                action_posterior_dist = idm(
+                    torch.cat([state_feature, emb_seq[t]], dim=-1)
+                )
+                action_prior_dist = policy(state_feature)
+                actions_kl = torch.distributions.kl_divergence(
+                    action_posterior_dist, action_prior_dist
+                )
+                actions_kls.append(actions_kl)
+                action = action_posterior_dist.rsample()
+            state, kl = self.posterior_step(None, action, state, emb_seq[t])
+            states.append(state)
+            kls.append(kl)
+            actions.append(action)
+
+        for t in range(filter_step, len(obs_seq)):
+            action_dist = policy(self.get_state_feature(state))
+            action = action_dist.rsample()
+            state = self.prior_step(action, state)
+            states.append(state)
+            actions.append(action)
+
+        kls = torch.stack(kls)
+        if idm is not None:
+            action_kls = torch.stack(actions_kls)
+        actions = torch.stack(actions)
+
+        state_features = torch.stack(
+            [self.get_state_feature(state) for state in states]
+        )
+        output_dists = self.get_output_dists(state_features)
+
+        metrics = {}
+        rec_term = 0
+        for name, dist in output_dists.items():
+            _r_term = torch.mean(
+                torch.flatten(dist.log_prob(obs_seq[name]), 2).sum(dim=-1).sum(dim=0)
+            )
+            rec_term = rec_term + _r_term
+            metrics[f"{name}_mse"] = self.metric_func(dist.mean, obs_seq[name]).item()
+            metrics[f"{name}_rec_term"] = _r_term.item()
+        kl_term = -torch.mean(kls.sum(dim=-1).sum(dim=0))
+        elbo = rec_term + kl_term
+        metrics.update(
+            {
+                "rec_term": rec_term.item(),
+                "kl_term": kl_term.item(),
+                "elbo": elbo.item(),
+            }
+        )
+
+        reconstruction_loss = 0
+        kl_loss = 0
+
+        if self.nll_reweight == "none":
+            reconstruction_loss = -rec_term
+            kl_loss = -kl_term
+        # Reference: Seitzer et. al., On the Pitfalls of Heteroscedastic Uncertainty Estimation with Probabilistic Neural Networks, ICLR 2022  # noqa: E501
+        # NOTE: the original version only reweight the log_prob, but here I think if the likelihood is reweighted, the kl should be reweighted accordingly.  # noqa: E501
+        elif self.nll_reweight == "modility_wise":
+            for name, dist in output_dists.items():
+                _r_loss = -torch.mean(
+                    torch.flatten(
+                        dist.log_prob(obs_seq[name]) * dist.stddev.detach(), 2
+                    )
+                    .sum(dim=-1)
+                    .sum(dim=0)
+                )
+                reconstruction_loss = reconstruction_loss + _r_loss
+                metrics[f"{name}_mse"] = self.metric_func(
+                    dist.mean, obs_seq[name]
+                ).item()
+                metrics[f"{name}_reconstruction_loss"] = _r_loss.item()
+                kl_loss = kl_loss + torch.mean(
+                    (
+                        kls.sum(dim=-1)
+                        * torch.flatten(dist.stddev[: kls.shape[0]], 2)
+                        .detach()
+                        .mean(dim=-1)
+                    ).sum(dim=0)
+                )
+            kl_loss = kl_loss / len(output_dists)
+        elif self.nll_reweight == "dim_wise":
+            total_dims = 0
+            for name, dist in output_dists.items():
+                _r_loss = -torch.mean(
+                    torch.flatten(
+                        dist.log_prob(obs_seq[name]) * dist.stddev.detach(), 2
+                    )
+                    .sum(dim=-1)
+                    .sum(dim=0)
+                )
+                reconstruction_loss = reconstruction_loss + _r_loss
+                metrics[f"{name}_mse"] = self.metric_func(
+                    dist.mean, obs_seq[name]
+                ).item()
+                metrics[f"{name}_reconstruction_loss"] = _r_loss.item()
