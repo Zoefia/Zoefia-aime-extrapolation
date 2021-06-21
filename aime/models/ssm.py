@@ -513,3 +513,128 @@ class SSM(torch.nn.Module):
                     dist.mean, obs_seq[name]
                 ).item()
                 metrics[f"{name}_reconstruction_loss"] = _r_loss.item()
+                kl_loss = kl_loss + torch.mean(
+                    (
+                        kls.sum(dim=-1, keepdim=True)
+                        * torch.flatten(dist.stddev[: kls.shape[0]], 2).detach()
+                    )
+                    .sum(dim=-1)
+                    .sum(dim=0)
+                )
+                total_dims = total_dims + np.prod(dist.stddev.shape[2:])
+            kl_loss = kl_loss / total_dims
+
+        if self.probe_config is not None:
+            # ad hoc skip the first state because there is no initial state estimator
+            probe_state_features = state_features.detach()[1:]
+            probe_dists = self.get_probe_dists(probe_state_features)
+            for name, dist in probe_dists.items():
+                _r_loss = -torch.mean(
+                    dist.log_prob(obs_seq[name][1:]).sum(dim=-1).sum(dim=0)
+                )
+                reconstruction_loss = reconstruction_loss + _r_loss
+                metrics[f"{name}_probe_mse"] = self.metric_func(
+                    dist.mean, obs_seq[name][1:]
+                ).item()
+                metrics[f"{name}_probe_reconstruction_loss"] = _r_loss.item()
+
+        if not kl_only:
+            loss = reconstruction_loss + self.kl_scale * kl_loss
+        else:
+            loss = self.kl_scale * kl_loss
+
+        if idm is not None:
+            action_kl_loss = action_kls.sum(dim=-1).sum(dim=0).mean()
+            loss = loss + self.kl_scale * action_kl_loss
+            metrics["action_kl_loss"] = action_kl_loss.item()
+
+        metrics.update(
+            {
+                "total_loss": loss.item(),
+                "reconstruction_loss": reconstruction_loss.item(),
+                "model_kl_loss": kl_loss.item(),
+            }
+        )
+
+        return (
+            ArrayDict({name: dist.mean for name, dist in output_dists.items()}),
+            states,
+            actions,
+            loss,
+            metrics,
+        )
+
+    def rollout_with_policy(
+        self,
+        initial_state,
+        policy,
+        horizon,
+        names=None,
+        state_detach=False,
+        action_sample=True,
+    ):
+        """
+        Rollout the world model in imagination with a policy.
+        In this way, the world model serves as a virtual environment for the agent.
+        This is used for Dyna-style algorithm like Dreamer.
+        """
+        state = initial_state
+        states = []
+        actions = []
+        action_entropys = []
+        for t in range(horizon):
+            state_feature = self.get_state_feature(state)
+            if state_detach:
+                state_feature = state_feature.detach()
+            action_dist = policy(state_feature)
+            action = action_dist.rsample() if action_sample else action_dist.mode
+            actions.append(action)
+            # the empirical maximal entropy tanhNormal is (0, 0.8742) in which p(0.5) = 0.5  # noqa: E501
+            action_entropys.append(kl_divergence(action_dist, TanhNormal(0, 0.88)))
+            state = self.prior_step(action, state)
+            states.append(state)
+
+        state_features = torch.stack(
+            [self.get_state_feature(state) for state in states]
+        )
+        actions = torch.stack(actions, dim=0)
+        action_entropys = torch.stack(action_entropys, dim=0)
+
+        outputs = ArrayDict(self.get_outputs(state_features, names))
+
+        if self.intrinsic_reward_config is not None:
+            initial_state_feature = self.get_state_feature(initial_state).unsqueeze(
+                dim=0
+            )
+
+            inputs = torch.cat(
+                [
+                    torch.cat([initial_state_feature, state_features[:-1]], dim=0),
+                    actions,
+                ],
+                dim=-1,
+            )
+
+            emb_predictions = [head(inputs) for head in self.emb_prediction_heads]
+            emb_predictions = torch.stack(emb_predictions, dim=0)
+            disagreements = torch.var(emb_predictions, dim=0)
+            intrinsic_rewards = torch.mean(disagreements.log(), dim=-1, keepdim=True)
+            outputs["intrinsic_reward"] = intrinsic_rewards
+
+        outputs["action_entropy"] = action_entropys
+
+        return states, actions, outputs
+
+
+class RSSM(SSM):
+    """
+    The one from PlaNet and Dreamer, name is short for Recurrent State-Space Model.
+    Interpretation of the latent variables:
+        h: history of all the states before (exclude the current time step)
+        s: information about the current time step (ambiguity reduced by the history)
+    """
+
+    def create_network(self):
+        super().create_network()
+
+        memory_dim, state_dim = self.state_dim
