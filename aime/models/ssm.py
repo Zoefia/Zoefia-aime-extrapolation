@@ -638,3 +638,99 @@ class RSSM(SSM):
         super().create_network()
 
         memory_dim, state_dim = self.state_dim
+
+        self.prior_mean = MLP(
+            memory_dim, state_dim, self.hidden_size, self.hidden_layers, self.norm
+        )
+        self.prior_std = MLP(
+            memory_dim,
+            state_dim,
+            self.hidden_size,
+            self.hidden_layers,
+            self.norm,
+            output_activation="softplus",
+        )
+        self.posterior_mean = MLP(
+            self.emb_dim + memory_dim,
+            state_dim,
+            self.hidden_size,
+            self.hidden_layers,
+            self.norm,
+        )
+        self.posterior_std = MLP(
+            self.emb_dim + memory_dim,
+            state_dim,
+            self.hidden_size,
+            self.hidden_layers,
+            self.norm,
+            output_activation="softplus",
+        )
+        self.memory_cell = torch.nn.GRUCell(state_dim + self.action_dim, memory_dim)
+
+        self.register_buffer("initial_memory", torch.zeros(1, memory_dim))
+        self.register_buffer("initial_state", torch.zeros(1, state_dim))
+
+    @property
+    def state_feature_dim(self) -> int:
+        return sum(self.state_dim)
+
+    def get_state_feature(self, state: ArrayDict) -> torch.Tensor:
+        return torch.cat([state["deter"], state["stoch"]], dim=-1)
+
+    def reset(self, batch_size: int) -> ArrayDict:
+        return ArrayDict(
+            deter=torch.repeat_interleave(self.initial_memory, batch_size, dim=0),
+            stoch=torch.repeat_interleave(self.initial_state, batch_size, dim=0),
+        )
+
+    def posterior_step(
+        self,
+        obs: ArrayDict,
+        pre_action: torch.Tensor,
+        state: ArrayDict,
+        emb: Optional[torch.Tensor] = None,
+        determinastic=False,
+    ):
+        h, s = state["deter"], state["stoch"]
+
+        if emb is None:
+            emb = self.get_emb(obs)
+
+        # 1. update the determinastic part
+        h = self.memory_cell(torch.cat([s, pre_action], dim=-1), h)
+
+        # 2. compute the prior
+        prior = Normal(self.prior_mean(h), self.prior_std(h) + self.min_std)
+
+        # 3. compute the posterior
+        info = torch.cat([h, emb], dim=-1)
+        posterior = Normal(
+            self.posterior_mean(info), self.posterior_std(info) + self.min_std
+        )
+
+        # 4. determine the state
+        s = posterior.rsample() if not determinastic else posterior.mean
+
+        # 5. compute kl for loss
+        kl = self.compute_kl(posterior, prior)
+
+        return ArrayDict(deter=h, stoch=s), kl
+
+    def prior_step(self, pre_action, state, determinastic=False):
+        h, s = state["deter"], state["stoch"]
+
+        # 1. update the determinastic part
+        h = self.memory_cell(torch.cat([s, pre_action], dim=-1), h)
+
+        # 2. compute the prior
+        prior = Normal(self.prior_mean(h), self.prior_std(h) + self.min_std)
+
+        # 3. update the stochastic part
+        s = prior.rsample() if not determinastic else prior.mean
+
+        return ArrayDict(deter=h, stoch=s)
+
+
+class RSSMO(RSSM):
+    """
+    Implement everything in the same way as the original repo.
