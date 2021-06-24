@@ -734,3 +734,120 @@ class RSSM(SSM):
 class RSSMO(RSSM):
     """
     Implement everything in the same way as the original repo.
+    """
+
+    def create_network(self):
+        # NOTE: this temprary implementation only consider visual and tabular modilities
+        self.encoders = torch.nn.ModuleDict()
+        self.modilities_and_keys = {"visual": [], "tabular": []}
+        tabular_dims = 0
+        for name, dim, encoder_config in self.input_config:
+            encoder_config = encoder_config.copy()
+            encoder_type = encoder_config.pop("name")
+            if encoder_type == "mlp":
+                self.modilities_and_keys["tabular"].append(name)
+                tabular_encoder_config = encoder_config
+                tabular_dims += dim
+            else:
+                self.modilities_and_keys["visual"].append(name)
+                self.encoders[name] = encoder_classes[encoder_type](
+                    dim, **encoder_config
+                )
+
+        if tabular_dims > 0:
+            self.encoders["tabular"] = encoder_classes["mlp"](
+                tabular_dims, **tabular_encoder_config
+            )
+
+        self.emb_dim = sum(
+            [encoder.output_dim for name, encoder in self.encoders.items()]
+        )
+
+        self.decoders = torch.nn.ModuleDict()
+        for name, dim, decoder_config in self.output_config:
+            if name == "emb":
+                dim = self.emb_dim
+            decoder_config = decoder_config.copy()
+            decoder_type = decoder_config.pop("name")
+            self.decoders[name] = decoder_classes[decoder_type](
+                self.state_feature_dim, dim, **decoder_config
+            )
+
+        self.probes = torch.nn.ModuleDict()
+        for name, dim, decoder_config in self.probe_config:
+            if name == "emb":
+                dim = self.emb_dim
+            decoder_config = decoder_config.copy()
+            decoder_type = decoder_config.pop("name")
+            self.probes[name] = decoder_classes[decoder_type](
+                self.state_feature_dim, dim, **decoder_config
+            )
+
+        if not (self.idm_mode == "none"):
+            # Inverse Dynamic Model (IDM) is a non-casual policy
+            self.idm = TanhGaussianPolicy(
+                self.state_feature_dim + self.emb_dim,
+                self.action_dim,
+                self.hidden_size,
+                self.hidden_layers,
+            )
+
+        if self.intrinsic_reward_config is not None:
+            self.emb_prediction_heads = torch.nn.ModuleList(
+                [
+                    MLP(
+                        self.state_feature_dim + self.action_dim,
+                        self.emb_dim,
+                        self.intrinsic_reward_config["hidden_size"],
+                        self.intrinsic_reward_config["hidden_layers"],
+                    )
+                    for _ in range(self.intrinsic_reward_config["num_ensembles"])
+                ]
+            )
+
+        memory_dim, state_dim = self.state_dim
+
+        self.pre_memory = MLP(
+            state_dim + self.action_dim,
+            None,
+            self.hidden_size,
+            1,
+            self.norm,
+            have_head=False,
+            hidden_activation="swish",
+        )
+        self.memory_cell = torch.nn.GRUCell(self.hidden_size, memory_dim)
+
+        self.prior_net = MLP(
+            memory_dim,
+            2 * state_dim,
+            self.hidden_size,
+            1,
+            self.norm,
+            hidden_activation="swish",
+        )
+        self.posterior_net = MLP(
+            self.emb_dim + memory_dim,
+            2 * state_dim,
+            self.hidden_size,
+            1,
+            self.norm,
+            hidden_activation="swish",
+        )
+
+        self.register_buffer("initial_memory", torch.zeros(1, memory_dim))
+        self.register_buffer("initial_state", torch.zeros(1, state_dim))
+
+    def get_emb(self, obs):
+        outputs = []
+        for name, model in self.encoders.items():
+            if name == "tabular":
+                inputs = torch.cat(
+                    [obs[name] for name in self.modilities_and_keys["tabular"]], dim=-1
+                )
+            else:
+                inputs = obs[name]
+            outputs.append(model(inputs))
+        return torch.cat(outputs, dim=-1)
+
+    def posterior_step(
