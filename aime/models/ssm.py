@@ -851,3 +851,64 @@ class RSSMO(RSSM):
         return torch.cat(outputs, dim=-1)
 
     def posterior_step(
+        self,
+        obs: ArrayDict,
+        pre_action: torch.Tensor,
+        state: ArrayDict,
+        emb: Optional[torch.Tensor] = None,
+        determinastic=False,
+    ):
+        h, s = state["deter"], state["stoch"]
+
+        if emb is None:
+            emb = self.get_emb(obs)
+
+        # 1. update the determinastic part
+        info = self.pre_memory(torch.cat([s, pre_action], dim=-1))
+        h = self.memory_cell(info, h)
+
+        # 2. compute the prior
+        prior_mean, prior_std = torch.chunk(self.prior_net(h), 2, dim=-1)
+        prior_std = self._sigmoid2(prior_std) + self.min_std
+        prior = Normal(prior_mean, prior_std)
+
+        # 3. compute the posterior
+        info = torch.cat([h, emb], dim=-1)
+        posterior_mean, posterior_std = torch.chunk(self.posterior_net(info), 2, dim=-1)
+        posterior_std = self._sigmoid2(posterior_std) + self.min_std
+        posterior = Normal(posterior_mean, posterior_std)
+
+        # 4. determine the state
+        s = posterior.rsample() if not determinastic else posterior.mean
+
+        # 5. compute kl for loss
+        kl = self.compute_kl(posterior, prior)
+
+        return ArrayDict(deter=h, stoch=s), kl
+
+    def prior_step(self, pre_action, state, determinastic=False):
+        h, s = state["deter"], state["stoch"]
+
+        # 1. update the determinastic part
+        info = self.pre_memory(torch.cat([s, pre_action], dim=-1))
+        h = self.memory_cell(info, h)
+
+        # 2. compute the prior
+        prior_mean, prior_std = torch.chunk(self.prior_net(h), 2, dim=-1)
+        prior_std = self._sigmoid2(prior_std) + self.min_std
+        prior = Normal(prior_mean, prior_std)
+
+        # 3. update the stochastic part
+        s = prior.rsample() if not determinastic else prior.mean
+
+        return ArrayDict(deter=h, stoch=s)
+
+    def _sigmoid2(self, x):
+        # from dreamerv2
+        return 2 * torch.sigmoid(x / 2)
+
+
+ssm_classes: Dict[str, SSM] = {
+    "rssm": RSSM,
+    "rssmo": RSSMO,
+}
