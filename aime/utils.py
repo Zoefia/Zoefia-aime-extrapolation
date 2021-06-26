@@ -143,3 +143,101 @@ def load_pretrained_model(model_root):
     world_model_config = parse_world_model_config(config, sensor_layout, env.observation_space, False)
     world_model_name = world_model_config.pop("name")
     model = ssm_classes[world_model_name](**world_model_config)
+    model.load_state_dict(
+        torch.load(os.path.join(model_root, "model.pt"), map_location="cpu")
+    )
+
+    return model
+
+def need_render(environment_setup: str):
+    """determine whether the render is a must during training"""
+    return environment_setup in ["visual", "full", "real"]
+
+
+def interact_with_environment(env, actor, image_sensors) -> float:
+    """interact a environment with an actor for one trajectory"""
+    obs = env.reset()
+    actor.reset()
+    reward = 0
+    while not obs.get("is_last", False) and not obs.get("is_terminal", False):
+        for image_key in image_sensors:
+            if image_key in obs.keys():
+                obs[image_key] = rearrange(obs[image_key], "h w c -> c h w") / 255.0
+        action = actor(obs)
+        obs = env.step(action)
+        reward += obs["reward"]
+    return reward
+
+
+@torch.no_grad()
+def generate_prediction_videos(
+    model,
+    data,
+    env,
+    all_image_sensors,
+    used_image_sensors,
+    filter_step: int = 10,
+    samples: int = 6,
+    custom_action_seq=None,
+):
+    videos = {}
+    data = data[:, :samples]
+    data.vmap_(lambda x: x.contiguous())
+    pre_action_seq = (
+        data["pre_action"]
+        if custom_action_seq is None
+        else custom_action_seq[:, :samples]
+    )
+    predicted_obs_seq, _, _, _ = model(data, pre_action_seq, filter_step=filter_step)
+    if len(used_image_sensors) == 0:
+        # one must render the scene from other signals
+        some_key = list(predicted_obs_seq.keys())[0]
+        some_value = predicted_obs_seq[some_key][..., 0]
+        t, b = predicted_obs_seq[some_key].shape[:2]
+        predicted_obs_seq.to_numpy()
+        image_obs_seq = []
+        for i in range(t):
+            _image_obs_seq = []
+            for j in range(b):
+                obs = predicted_obs_seq[i, j]
+                env.set_state_from_obs(obs)
+                _image_obs_seq.append(ArrayDict(env.render()))
+            image_obs_seq.append(ArrayDict.stack(_image_obs_seq, dim=0))
+        image_obs_seq = ArrayDict.stack(image_obs_seq, dim=0)
+        image_obs_seq.to_torch()
+        for image_key in image_obs_seq.keys():
+            image_obs_seq[image_key] = (
+                rearrange(image_obs_seq[image_key], "t b h w c -> t b c h w") / 255.0
+            )
+        predicted_obs_seq.to_torch()
+        predicted_obs_seq.update(image_obs_seq)
+        predicted_obs_seq.to(some_value)
+
+        data.to_numpy()
+        image_obs_seq = []
+        for i in range(t):
+            _image_obs_seq = []
+            for j in range(b):
+                obs = data[i, j]
+                env.set_state_from_obs(obs)
+                _image_obs_seq.append(ArrayDict(env.render()))
+            image_obs_seq.append(ArrayDict.stack(_image_obs_seq, dim=0))
+        image_obs_seq = ArrayDict.stack(image_obs_seq, dim=0)
+        image_obs_seq.to_torch()
+        for image_key in image_obs_seq.keys():
+            image_obs_seq[image_key] = (
+                rearrange(image_obs_seq[image_key], "t b h w c -> t b c h w") / 255.0
+            )
+        data.to_torch()
+        data.update(image_obs_seq)
+        data.to(some_value)
+
+    for image_key in all_image_sensors:
+        if image_key not in predicted_obs_seq.keys():
+            continue
+        gt_video = data[image_key]
+        pred_video = predicted_obs_seq[image_key]
+        diff_video = (gt_video - pred_video) / 2 + 0.5
+        log_video = torch.cat([gt_video, pred_video, diff_video], dim=1)
+        log_video = rearrange(log_video, "t (m b) c h w -> t (m h) (b w) c", m=3) * 255
+        videos[f"rollout_video_{image_key}"] = log_video
