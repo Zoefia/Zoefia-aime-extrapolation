@@ -241,3 +241,58 @@ def generate_prediction_videos(
         log_video = torch.cat([gt_video, pred_video, diff_video], dim=1)
         log_video = rearrange(log_video, "t (m b) c h w -> t (m h) (b w) c", m=3) * 255
         videos[f"rollout_video_{image_key}"] = log_video
+
+    return videos
+
+
+@torch.no_grad()
+def eval_prediction(
+    model,
+    data,
+    filter_step: int = 10,
+):
+    metrics = {}
+    pre_action_seq = data["pre_action"]
+    predicted_obs_seq, _, _, _ = model(data, pre_action_seq, filter_step=filter_step)
+
+    for name in model.decoders.keys():
+        metrics[f"prediction_{name}_mse"] = torch.nn.MSELoss()(
+            predicted_obs_seq[name][filter_step:], data[name][filter_step:]
+        ).item()
+
+    return metrics
+
+
+@torch.jit.script
+def lambda_return(reward, value, discount, bootstrap, lambda_: float):
+    """
+    Modify from https://github.com/danijar/dreamer/blob/master/tools.py,
+    Setting lambda=1 gives a discounted Monte Carlo return.
+    Setting lambda=0 gives a fixed 1-step return.
+    """
+    next_values = torch.cat([value[1:], bootstrap[None]], dim=0)
+    inputs = reward + discount * next_values * (1 - lambda_)
+    returns = []
+    curr_value = bootstrap
+    for t in reversed(torch.arange(len(value))):
+        curr_value = inputs[t] + lambda_ * discount[t] * curr_value
+        returns.append(curr_value)
+    returns = torch.stack(returns)
+    returns = torch.flip(returns, dims=[0])
+    return returns
+
+
+CONFIG_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), "configs")
+OUTPUT_PATH = "logs"
+DATA_PATH = "datasets"
+MODEL_PATH = "pretrained-models"
+
+EXPERT_PERFORMANCE = {
+    'walker-stand' : 957.87109375,
+    'walker-walk' : 943.7876586914062,
+    'walker-run' : 604.10009765625,
+    'cheetah-run' : 888.6480102539062,
+    'cheetah-runbackward' : 218.50271606445312,
+    'cheetah-flip' : 485.7939758300781,
+    'cheetah-flipbackward' : 379.9083251953125,
+}
