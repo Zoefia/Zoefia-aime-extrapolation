@@ -55,3 +55,54 @@ There are applications with each of the ability the model provides:
 - The model shouldn't work well on embodiments other than what it is trained for without finetuning. 
 
 ## How to Get Started with the Model
+
+Use the code below to get started with the model:
+
+```python
+from aime.utils import load_pretrained_model
+
+model_root = ... 
+
+model = load_pretrained_model(model_root)
+```
+
+## Training Details
+
+### Training Data
+
+<!-- This should link to a Data Card, perhaps with a short stub of information on what the training data is all about as well as documentation related to data pre-processing or additional filtering. -->
+
+The datasets we use to train the model are also released [here](https://github.com/argmax-ai/aime/releases/latest). For more details about the datasets, please checkout the [data card](../datasets/readme.md).
+
+### Training Procedure 
+
+<!-- This relates heavily to the Technical Specifications. Content here should link to that section when it is relevant to the training procedure. -->
+
+The model is pretrained on each datasets by running the [train_model_only.py](../scripts/train_model_only.py) script. 
+The walker models are trained with the RSSM architecture while the cheetah models are trained with the RSSMO architecture, you can find their implementation details at [code](../aime/models/ssm.py).
+For example, to get the `walker-mix-visual` model, you can run `python scripts/train_model_only.py env=walker environment_setup=visual embodiment_dataset_name=walker-mix world_model=rssm`
+
+#### Training Hyperparameters
+
+Please checkout the general config at [here](../aime/configs/model-only.yaml) and model configs for [RSSM](../aime/configs/world_model/rssm.yaml) and [RSSMO](../aime/configs/world_model/rssmo.yaml).
+
+## Citation
+
+<!-- If there is a paper or blog post introducing the model, Bibtex information for that should go in this section. -->
+
+If you find the models useful, please cite our paper.
+
+```BibTeX
+@inproceedings{
+zhang2023aime,
+title={Action Inference by Maximising Evidence: Zero-Shot Imitation from Observation with World Models},
+author={Xingyuan Zhang and Philip Becker-Ehmck and Patrick van der Smagt and Maximilian Karl},
+booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
+year={2023},
+url={https://openreview.net/forum?id=WjlCQxpuxU}
+}
+```
+
+## Model Card Authors and Contact
+
+Xingyuan Zhang with wizardicarus@gmail.com.
