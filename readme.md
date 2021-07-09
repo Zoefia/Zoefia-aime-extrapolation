@@ -16,4 +16,11 @@ If you find this code useful, please reference in your paper:
 zhang2023aime,
 title={Action Inference by Maximising Evidence: Zero-Shot Imitation from Observation with World Models},
 author={Xingyuan Zhang and Philip Becker-Ehmck and Patrick van der Smagt and Maximilian Karl},
-booktitle={Thirty-seventh Conference on Neural Info
+booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
+year={2023},
+url={https://openreview.net/forum?id=WjlCQxpuxU}
+}
+```
+
+## Setup
+```
