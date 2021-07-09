@@ -10,4 +10,8 @@ This repository contains the original implementation of [AIME](https://openrevie
 
 ![AIME Framework](pic/aime.jpg)
 
-If you find this code 
+If you find this code useful, please reference in your paper:
+```BibTeX
+@inproceedings{
+zhang2023aime,
+title={Action Inference by M
