@@ -6,4 +6,8 @@
 
 ## AIME 
 
-This repository contains the original implementation of [AIME](htt
+This repository contains the original implementation of [AIME](https://openreview.net/forum?id=WjlCQxpuxU) in PyTorch.
+
+![AIME Framework](pic/aime.jpg)
+
+If you find this code 
