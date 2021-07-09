@@ -24,3 +24,6 @@ url={https://openreview.net/forum?id=WjlCQxpuxU}
 
 ## Setup
 ```
+conda create -n aime python=3.9
+conda activate aime
+conda install pytorch==2.0.0 torchvision==0.15.0 torchaudio=
