@@ -14,4 +14,5 @@ If you find this code useful, please reference in your paper:
 ```BibTeX
 @inproceedings{
 zhang2023aime,
-title={Action Inference by M
+title={Action Inference by Maximising Evidence: Zero-Shot Imitation from Observation with World Models},
+author={Xingyuan Zhang and Philip Becker-Ehmc
