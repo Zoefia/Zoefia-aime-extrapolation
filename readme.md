@@ -33,4 +33,7 @@ pip install -e .
 
 ## Structure
 All the datasets should be placed under `datasets/` and the pretrained models should be placed under `pretrained-models/`. 
-Results will be placed under `logs/`, which you can view by tensorboard
+Results will be placed under `logs/`, which you can view by tensorboard.
+
+## Download the datasets and pre-trained models
+The datasets and pretrained models can be access from [Github Release](ht
