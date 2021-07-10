@@ -30,3 +30,6 @@ conda install pytorch==2.0.0 torchvision==0.15.0 torchaudio==2.0.0 pytorch-cuda=
 pip install -r requirements.txt
 pip install -e .
 ```
+
+## Structure
+All the datasets should be placed under `datasets/` and the pretrained models should b
