@@ -36,4 +36,6 @@ All the datasets should be placed under `datasets/` and the pretrained models sh
 Results will be placed under `logs/`, which you can view by tensorboard.
 
 ## Download the datasets and pre-trained models
-The datasets and pretrained models can be access from [Github Release](https://github.com/argmax-ai/aime/releases/latest). All the datasets and models are released under a [_CC BY 4.0 license_](https://creativecommons.org/licenses/by/4.0/). For more details, please check out the [Data Card](datasets/readme.md
+The datasets and pretrained models can be access from [Github Release](https://github.com/argmax-ai/aime/releases/latest). All the datasets and models are released under a [_CC BY 4.0 license_](https://creativecommons.org/licenses/by/4.0/). For more details, please check out the [Data Card](datasets/readme.md) and [Model Card](pretrained-models/readme.md).
+
+For datasets, you need to extract it to `datasets/` 
