@@ -43,4 +43,7 @@ For datasets, you need to extract it to `datasets/` folder by
 tar -xzvf <.tgz file> -C datasets/
 ```
 
-To generate the `walker-mix` dataset, please download all the 
+To generate the `walker-mix` dataset, please download all the walker datasets and then run the following command:
+
+```
+python scripts/mix_datasets.py -i walker-random walker-plan2ex
