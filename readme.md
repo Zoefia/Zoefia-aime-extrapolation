@@ -49,4 +49,7 @@ To generate the `walker-mix` dataset, please download all the walker datasets an
 python scripts/mix_datasets.py -i walker-random walker-plan2explore-buffer walker-stand-buffer walker-walk-buffer -o walker-mix
 ```
 
-For pretrain models, you need 
+For pretrain models, you need to extract it to `pretrained-models/` folder by
+```
+tar -xzvf pretrained-models.tgz -C pretrained-models/
+`
