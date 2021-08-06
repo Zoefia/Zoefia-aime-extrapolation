@@ -57,4 +57,5 @@ tar -xzvf pretrained-models.tgz -C pretrained-models/
 ## Usage
 
 ### General
-- The supported environments can be found in `aime/configs/env/`, and supported tasks
+- The supported environments can be found in `aime/configs/env/`, and supported tasks are listed in each individual environment file under the `supported_tasks`.
+- We support `environment_setup` to be chose from `
