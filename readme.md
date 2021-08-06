@@ -52,4 +52,9 @@ python scripts/mix_datasets.py -i walker-random walker-plan2explore-buffer walke
 For pretrain models, you need to extract it to `pretrained-models/` folder by
 ```
 tar -xzvf pretrained-models.tgz -C pretrained-models/
-`
+```
+
+## Usage
+
+### General
+- The supported environments can be found in `aime/configs/env/`, and supported tasks
