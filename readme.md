@@ -60,4 +60,10 @@ tar -xzvf pretrained-models.tgz -C pretrained-models/
 - The supported environments can be found in `aime/configs/env/`, and supported tasks are listed in each individual environment file under the `supported_tasks`.
 - We support `environment_setup` to be chose from `mdp`, `lpomdp` and `visual`.
 - `dataset_name` is referring to a folder under the `datasets/` folder. 
-- `model_name` is r
+- `model_name` is referring to a folder under the `pretrained-models/` folder.
+
+### AIME
+
+#### Train the dreamer agent
+
+`
