@@ -68,3 +68,9 @@ tar -xzvf pretrained-models.tgz -C pretrained-models/
 
 ```
 python scripts/train_dreamer.py env=<env_name> env.task=<task_name> environment_setup=<environment_setup>
+```
+
+*example:*
+
+```
+python scripts/train_dreamer.py env=walker env.task=walk environment_setup=visual
