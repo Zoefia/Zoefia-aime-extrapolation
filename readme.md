@@ -66,4 +66,5 @@ tar -xzvf pretrained-models.tgz -C pretrained-models/
 
 #### Train the dreamer agent
 
-`
+```
+python scripts/train_dreamer.py env=<env_name> env.task=<task_name> environment_setup=<environment_setup>
