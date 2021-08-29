@@ -74,3 +74,9 @@ python scripts/train_dreamer.py env=<env_name> env.task=<task_name> environment_
 
 ```
 python scripts/train_dreamer.py env=walker env.task=walk environment_setup=visual
+```
+
+#### Train the plan2explore agent
+
+```
+python scripts/train_plan2explore.py env=<env
