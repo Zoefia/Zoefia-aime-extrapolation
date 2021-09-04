@@ -85,4 +85,9 @@ python scripts/train_plan2explore.py env=<env_name> environment_setup=<environme
 *example:*
 
 ```
-python scripts/train_plan2explore.py env=walker environ
+python scripts/train_plan2explore.py env=walker environment_setup=visual
+```
+
+#### Train world model from a dataset (Phase 1 in AIME)
+```
+python scripts/tra
