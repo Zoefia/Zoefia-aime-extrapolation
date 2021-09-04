@@ -90,4 +90,4 @@ python scripts/train_plan2explore.py env=walker environment_setup=visual
 
 #### Train world model from a dataset (Phase 1 in AIME)
 ```
-python scripts/tra
+python scripts/train_model_only.py env=<env_name> environment_setup=<environment_setup> embodiment_dataset_name=<dat
