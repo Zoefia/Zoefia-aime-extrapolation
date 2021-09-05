@@ -96,4 +96,10 @@ python scripts/train_model_only.py env=<env_name> environment_setup=<environment
 *example:*
 
 ```
-python scripts/train_model_only.py env=walker environment_setup=visual embodime
+python scripts/train_model_only.py env=walker environment_setup=visual embodiment_dataset_name=walker-mix
+```
+
+#### Train AIME for imitation (Phase 2 in AIME)
+
+```
+python scripts/train_aime.py env=
