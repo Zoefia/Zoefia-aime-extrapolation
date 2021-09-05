@@ -102,4 +102,10 @@ python scripts/train_model_only.py env=walker environment_setup=visual embodimen
 #### Train AIME for imitation (Phase 2 in AIME)
 
 ```
-python scripts/train_aime.py env=<env_name> env.task=<task> environment_setup=<environment_setup> model_name=<model_name> demonstration_
+python scripts/train_aime.py env=<env_name> env.task=<task> environment_setup=<environment_setup> model_name=<model_name> demonstration_dataset_name=<dataset_name> world_model.free_nats=0.0 world_model.kl_rebalance=null
+```
+
+*example:*
+
+```
+python sc
