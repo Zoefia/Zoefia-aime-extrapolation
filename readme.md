@@ -108,4 +108,7 @@ python scripts/train_aime.py env=<env_name> env.task=<task> environment_setup=<e
 *example:*
 
 ```
-python scripts/train_aime.py env=walker env.task=run environment_setup=visual model_name=walker-mix-visual demonstration_d
+python scripts/train_aime.py env=walker env.task=run environment_setup=visual model_name=walker-mix-visual demonstration_dataset_name=walker-run-expert world_model.free_nats=0.0 world_model.kl_rebalance=null world_model=rssm
+```
+
+Option
