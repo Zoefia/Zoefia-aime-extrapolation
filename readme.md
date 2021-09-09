@@ -113,4 +113,7 @@ python scripts/train_aime.py env=walker env.task=run environment_setup=visual mo
 
 Optional:
 - pass `kl_only=True` to train with only the KL term.
-- pass `world_model.kl_scale=0.0` to train with only reconst
+- pass `world_model.kl_scale=0.0` to train with only reconstruction term.
+- pass `use_idm=True` to use IDM as guidence, see Appendix C for details.
+
+### Ba
