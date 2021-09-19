@@ -116,4 +116,9 @@ Optional:
 - pass `world_model.kl_scale=0.0` to train with only reconstruction term.
 - pass `use_idm=True` to use IDM as guidence, see Appendix C for details.
 
-### Ba
+### Baselines
+
+#### BC
+
+```
+python scripts/train_bc.py env=<env_name> env.task=<task> environment_setup=<environment_setup> demon
