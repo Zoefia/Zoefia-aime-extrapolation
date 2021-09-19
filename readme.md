@@ -121,4 +121,10 @@ Optional:
 #### BC
 
 ```
-python scripts/train_bc.py env=<env_name> env.task=<task> environment_setup=<environment_setup> demon
+python scripts/train_bc.py env=<env_name> env.task=<task> environment_setup=<environment_setup> demonstration_dataset_name=<dataset_name>
+```
+
+*example:*
+
+```
+python scripts/train_bc.py env=walker env.task
