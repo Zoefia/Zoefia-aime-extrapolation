@@ -127,4 +127,10 @@ python scripts/train_bc.py env=<env_name> env.task=<task> environment_setup=<env
 *example:*
 
 ```
-python scripts/train_bc.py env=walker env.task
+python scripts/train_bc.py env=walker env.task=run environment_setup=mdp demonstration_dataset_name=walker-walk-expert
+```
+
+#### BCO
+
+```
+python scripts/train_b
