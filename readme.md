@@ -133,4 +133,10 @@ python scripts/train_bc.py env=walker env.task=run environment_setup=mdp demonst
 #### BCO
 
 ```
-python scripts/train_bco.py env=<env_name> env.task=<task> environment_setup=<environment_setup> embodiment_dataset_name=<embo
+python scripts/train_bco.py env=<env_name> env.task=<task> environment_setup=<environment_setup> embodiment_dataset_name=<embodiment_dataset_name> demonstration_dataset_name=<demonstration_dataset_name>
+```
+
+*example:*
+
+```
+pyth
