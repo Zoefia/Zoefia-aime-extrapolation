@@ -144,4 +144,9 @@ python scripts/train_bco.py env=walker env.task=run environment_setup=mdp embodi
 
 #### IIDM
 ```
-python scripts/train_iidm.py env=<env_name> env.task=<task> environment_setup=<environment_setup> embodiment_dataset_name=<embodiment_dataset_name> demonstration_
+python scripts/train_iidm.py env=<env_name> env.task=<task> environment_setup=<environment_setup> embodiment_dataset_name=<embodiment_dataset_name> demonstration_dataset_name=<demonstration_dataset_name>
+```
+
+*example:*
+```
+python scripts/train_iidm.py env
