@@ -149,4 +149,4 @@ python scripts/train_iidm.py env=<env_name> env.task=<task> environment_setup=<e
 
 *example:*
 ```
-python scripts/train_iidm.py env
+python scripts/train_iidm.py env=walker env.task=run environment_setup=mdp embodiment_dataset_name=walker-mix demonstration_dataset_n
