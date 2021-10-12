@@ -153,4 +153,6 @@ python scripts/train_iidm.py env=walker env.task=run environment_setup=mdp embod
 ```
 
 ### NOTE:
-- If you are using the pretrained models that we published, pl
+- If you are using the pretrained models that we published, please make sure you use `world_model=rssm` for the Walker models, and `world_model=rssmo` for the Cheetah models.
+
+## Results
