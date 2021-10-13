@@ -156,4 +156,4 @@ python scripts/train_iidm.py env=walker env.task=run environment_setup=mdp embod
 - If you are using the pretrained models that we published, please make sure you use `world_model=rssm` for the Walker models, and `world_model=rssmo` for the Cheetah models.
 
 ## Results
-The normalised scores used in the paper is offered as json files in the `results` folder and the expert performace that was us
+The normalised scores used in the paper is offered as json files in the `results` folder and the expert performace that was used to normalised the scores can be accessed with `from aime.utils import EXPERT_PERFORMANCE`. For each setup, th
