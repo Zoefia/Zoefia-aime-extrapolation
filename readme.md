@@ -160,4 +160,4 @@ The normalised scores used in the paper is offered as json files in the `results
 
 ## Disclaimer
 
-The purpose of this source code is limited to bare dem
+The purpose of this source code is limited to bare demonstration of the experimental section of the related papers.
