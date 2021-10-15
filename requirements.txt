@@ -1,3 +1,10 @@
 numpy==1.26.0
 einops==0.7.0
-tq
+tqdm==4.66.1
+ipython==8.17.2
+dm_control==1.0.10
+mujoco==2.3.2
+gym==0.26.2
+scipy==1.11.3
+tensorboard==2.15.1
+omegacon
