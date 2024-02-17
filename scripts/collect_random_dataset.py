@@ -19,4 +19,7 @@ def main():
     args = parser.parse_args()
 
     setup_seed(args.seed)
-    env_config = OmegaConf.load(os.path.join(CONFIG_PATH, "env"
+    env_config = OmegaConf.load(os.path.join(CONFIG_PATH, "env", args.env + ".yaml"))
+    output_folder = os.path.join(
+        DATA_PATH,
+        f'{env_config["name"]}-random
