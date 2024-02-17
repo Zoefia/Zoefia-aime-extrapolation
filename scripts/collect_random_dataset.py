@@ -16,4 +16,7 @@ def main():
     parser.add_argument("--env", type=str, required=True)
     parser.add_argument("--num_trajectories", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=42)
-    args = parser.par
+    args = parser.parse_args()
+
+    setup_seed(args.seed)
+    env_config = OmegaConf.load(os.path.join(CONFIG_PATH, "env"
