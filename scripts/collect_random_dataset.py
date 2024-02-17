@@ -14,4 +14,6 @@ log.basicConfig(level=log.INFO)
 def main():
     parser = ArgumentParser()
     parser.add_argument("--env", type=str, required=True)
-    parser.add_argument("--num_tra
+    parser.add_argument("--num_trajectories", type=int, default=1000)
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.par
