@@ -26,4 +26,6 @@ def main():
     )
 
     env = DMC(
-        env_con
+        env_config["name"], action_repeat=env_config["action_repeat"], seed=args.seed
+    )
+    env = SaveTrajectories(
