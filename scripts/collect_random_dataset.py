@@ -22,4 +22,8 @@ def main():
     env_config = OmegaConf.load(os.path.join(CONFIG_PATH, "env", args.env + ".yaml"))
     output_folder = os.path.join(
         DATA_PATH,
-        f'{env_config["name"]}-random
+        f'{env_config["name"]}-random-nt{args.num_trajectories}-ar{env_config["action_repeat"]}-s{args.seed}',
+    )
+
+    env = DMC(
+        env_con
