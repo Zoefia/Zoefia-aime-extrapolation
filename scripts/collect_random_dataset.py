@@ -28,4 +28,8 @@ def main():
     env = DMC(
         env_config["name"], action_repeat=env_config["action_repeat"], seed=args.seed
     )
-    env = SaveTrajectories(
+    env = SaveTrajectories(env, output_folder)
+    env = TerminalSummaryWrapper(env)
+    env.action_space.seed(args.seed)
+
+    actor = RandomActor(e
