@@ -32,4 +32,6 @@ def main():
     env = TerminalSummaryWrapper(env)
     env.action_space.seed(args.seed)
 
-    actor = RandomActor(e
+    actor = RandomActor(env.action_space)
+    for i in range(args.num_trajectories):
+        interact_with_environment(e
