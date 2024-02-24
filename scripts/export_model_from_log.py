@@ -3,4 +3,8 @@
 import os
 from argparse import ArgumentParser
 
-from aime.utils import MODEL
+from aime.utils import MODEL_PATH
+
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--log_folder
