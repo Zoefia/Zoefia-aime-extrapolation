@@ -34,4 +34,8 @@ def main():
 
     actor = RandomActor(env.action_space)
     for i in range(args.num_trajectories):
-        interact_with_environment(e
+        interact_with_environment(env, actor, [])
+
+
+if __name__ == "__main__":
+    main()
