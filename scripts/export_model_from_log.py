@@ -13,4 +13,6 @@ if __name__ == "__main__":
 
     log_folder = args.log_folder
     assert os.path.exists(log_folder)
-    model_f
+    model_folder = os.path.join(MODEL_PATH, args.model_name)
+    if not os.path.exists(model_folder):
+        o
