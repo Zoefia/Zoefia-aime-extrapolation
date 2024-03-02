@@ -18,4 +18,6 @@ if __name__ == "__main__":
         os.makedirs(model_folder)
 
     os.system(f'cp {os.path.join(log_folder, "*.pt")} {model_folder}')
-    os.system(f'cp 
+    os.system(f'cp {os.path.join(log_folder, "config.yaml")} {model_folder}')
+    # make a document of the source
+    with open(os.path.
