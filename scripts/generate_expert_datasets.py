@@ -8,4 +8,7 @@ from omegaconf import OmegaConf
 from aime.actor import PolicyActor
 from aime.env import DMC, SaveTrajectories, TerminalSummaryWrapper
 from aime.models.policy import TanhGaussianPolicy
-from ai
+from aime.models.ssm import ssm_classes
+from aime.utils import (
+    get_image_sensors,
+    interact_with_environment
