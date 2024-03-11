@@ -19,4 +19,7 @@ from aime.utils import (
 log.basicConfig(level=log.INFO)
 
 
-def main
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("--model_path", type=str, required=True)
+    parser.add_
