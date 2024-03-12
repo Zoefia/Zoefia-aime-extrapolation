@@ -22,4 +22,5 @@ log.basicConfig(level=log.INFO)
 def main():
     parser = ArgumentParser()
     parser.add_argument("--model_path", type=str, required=True)
-    parser.add_
+    parser.add_argument("--output_folder", type=str, default=None)
+    parser.add_argument("--seed", type=int, defau
