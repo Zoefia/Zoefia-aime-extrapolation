@@ -23,4 +23,6 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--model_path", type=str, required=True)
     parser.add_argument("--output_folder", type=str, default=None)
-    parser.add_argument("--seed", type=int, defau
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--num_trajectories", type=int, default=100)
+    args = parser
