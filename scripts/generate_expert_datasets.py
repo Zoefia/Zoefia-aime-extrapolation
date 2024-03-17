@@ -37,4 +37,6 @@ def main():
 
     env_config = config["env"]
     test_env = DMC(
-        e
+        env_config["name"], action_repeat=env_config["action_repeat"], seed=args.seed
+    )
+    test_env = SaveTrajectories(te
