@@ -29,4 +29,6 @@ def main():
 
     setup_seed(args.seed)
 
-    config = OmegaConf.load(os.path.join(args.model_path, "conf
+    config = OmegaConf.load(os.path.join(args.model_path, "config.yaml"))
+    if args.output_folder is None:
+        expert_folder = os.path.join(args.model_path, "expert_trajector
