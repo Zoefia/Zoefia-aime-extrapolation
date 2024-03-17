@@ -31,4 +31,10 @@ def main():
 
     config = OmegaConf.load(os.path.join(args.model_path, "config.yaml"))
     if args.output_folder is None:
-        expert_folder = os.path.join(args.model_path, "expert_trajector
+        expert_folder = os.path.join(args.model_path, "expert_trajectories")
+    else:
+        expert_folder = args.output_folder
+
+    env_config = config["env"]
+    test_env = DMC(
+        e
