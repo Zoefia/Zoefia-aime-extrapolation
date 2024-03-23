@@ -39,4 +39,7 @@ def main():
     test_env = DMC(
         env_config["name"], action_repeat=env_config["action_repeat"], seed=args.seed
     )
-    test_env = SaveTrajectories(te
+    test_env = SaveTrajectories(test_env, expert_folder)
+    test_env = TerminalSummaryWrapper(test_env)
+
+    data = test_env.observation_s
