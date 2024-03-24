@@ -42,4 +42,7 @@ def main():
     test_env = SaveTrajectories(test_env, expert_folder)
     test_env = TerminalSummaryWrapper(test_env)
 
-    data = test_env.observation_s
+    data = test_env.observation_space
+
+    sensor_layout = env_config["sensors"]
+    world_model_config = parse_world_model_con
