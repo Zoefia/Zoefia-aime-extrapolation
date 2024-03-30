@@ -45,4 +45,6 @@ def main():
     data = test_env.observation_space
 
     sensor_layout = env_config["sensors"]
-    world_model_config = parse_world_model_con
+    world_model_config = parse_world_model_config(config, sensor_layout, data)
+    world_model_name = world_model_config.pop("name")
+    image_sensors, _ = get_
