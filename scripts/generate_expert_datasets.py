@@ -47,4 +47,7 @@ def main():
     sensor_layout = env_config["sensors"]
     world_model_config = parse_world_model_config(config, sensor_layout, data)
     world_model_name = world_model_config.pop("name")
-    image_sensors, _ = get_
+    image_sensors, _ = get_image_sensors(world_model_config, sensor_layout)
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+  
