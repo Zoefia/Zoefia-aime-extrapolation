@@ -50,4 +50,7 @@ def main():
     image_sensors, _ = get_image_sensors(world_model_config, sensor_layout)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-  
+    log.info(f"using device {device}")
+    model = ssm_classes[world_model_name](**world_model_config)
+    model.load_state_dict(
+   
