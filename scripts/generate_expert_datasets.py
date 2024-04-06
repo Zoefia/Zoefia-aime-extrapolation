@@ -53,4 +53,7 @@ def main():
     log.info(f"using device {device}")
     model = ssm_classes[world_model_name](**world_model_config)
     model.load_state_dict(
+        torch.load(os.path.join(args.model_path, "model.pt"), map_location="cpu"),
+        strict=False,
+    )
    
