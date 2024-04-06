@@ -56,4 +56,8 @@ def main():
         torch.load(os.path.join(args.model_path, "model.pt"), map_location="cpu"),
         strict=False,
     )
-   
+    model = model.to(device)
+
+    # load the pretrained policy
+    log.info("Creating and loading policy ...")
+    p
