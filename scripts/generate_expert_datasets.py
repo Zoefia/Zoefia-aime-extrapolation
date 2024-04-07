@@ -60,4 +60,6 @@ def main():
 
     # load the pretrained policy
     log.info("Creating and loading policy ...")
-    p
+    policy_config = config["policy"]
+    policy = TanhGaussianPolicy(
+        model.state_feature_dim, w
