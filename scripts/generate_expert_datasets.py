@@ -62,4 +62,7 @@ def main():
     log.info("Creating and loading policy ...")
     policy_config = config["policy"]
     policy = TanhGaussianPolicy(
-        model.state_feature_dim, w
+        model.state_feature_dim, world_model_config["action_dim"], **policy_config
+    )
+    policy.load_state_dict(
+        torch.load(os.path.join(args.model_path,
