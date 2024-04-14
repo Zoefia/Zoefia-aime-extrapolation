@@ -65,4 +65,9 @@ def main():
         model.state_feature_dim, world_model_config["action_dim"], **policy_config
     )
     policy.load_state_dict(
-        torch.load(os.path.join(args.model_path,
+        torch.load(os.path.join(args.model_path, "policy.pt"), map_location="cpu")
+    )
+    policy = policy.to(device)
+
+    # directly test this model and policy on the new task
+  
