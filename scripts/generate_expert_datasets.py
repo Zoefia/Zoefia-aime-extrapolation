@@ -70,4 +70,6 @@ def main():
     policy = policy.to(device)
 
     # directly test this model and policy on the new task
-  
+    log.info("Generating expert trajectories ...")
+    with torch.no_grad():
+        actor = PolicyActo
