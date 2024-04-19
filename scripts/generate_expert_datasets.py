@@ -72,4 +72,6 @@ def main():
     # directly test this model and policy on the new task
     log.info("Generating expert trajectories ...")
     with torch.no_grad():
-        actor = PolicyActo
+        actor = PolicyActor(model, policy)
+        for _ in range(args.num_trajectories):
+            interact_with_environment(test_env
