@@ -74,4 +74,8 @@ def main():
     with torch.no_grad():
         actor = PolicyActor(model, policy)
         for _ in range(args.num_trajectories):
-            interact_with_environment(test_env
+            interact_with_environment(test_env, actor, image_sensors)
+
+
+if __name__ == "__main__":
+    main()
