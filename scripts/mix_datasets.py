@@ -10,4 +10,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     input_folders = [
-        os.path.join(DATA_PATH, dataset_name) for dataset_name in
+        os.path.join(DATA_PATH, dataset_name) for dataset_name in args.input_dataset_names
+    ]
+    output_folder = os.path.join(DATA_PATH, args.output_dataset_name)
+    if not os.
