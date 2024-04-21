@@ -13,4 +13,9 @@ if __name__ == "__main__":
         os.path.join(DATA_PATH, dataset_name) for dataset_name in args.input_dataset_names
     ]
     output_folder = os.path.join(DATA_PATH, args.output_dataset_name)
-    if not os.
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    index = 0
+    for input_folder in input_folders:
+       
