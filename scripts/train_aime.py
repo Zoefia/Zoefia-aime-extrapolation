@@ -125,3 +125,111 @@ def main(config: DictConfig):
     logger = get_default_logger(output_folder)
 
     parameters = [*policy.parameters(), *model.parameters()]
+    if idm is not None:
+        parameters = parameters + [*idm.parameters()]
+    policy_optim = torch.optim.Adam(parameters, lr=config["model_lr"])
+    policy_scaler = torch.cuda.amp.GradScaler(enabled=config["use_fp16"])
+
+    for e in range(config["epoch"]):
+        log.info(f"Starting epcoh {e}")
+
+        loader = get_sample_loader(
+            dataset, config["batch_size"], config["batch_per_epoch"], num_workers=4
+        )
+
+        log.info("Training Model ...")
+        train_metric_tracker = AverageMeter()
+        training_start_time = time.time()
+        for data in tqdm(iter(loader)):
+            data = data.to(device)
+            with torch.autocast(
+                device_type=device, dtype=torch.float16, enabled=config["use_fp16"]
+            ):
+                _, _, action_seq, loss, metrics = model.filter_with_policy(
+                    data, policy, idm, kl_only=config["kl_only"]
+                )
+                # you should not be able to compute this metric in the real setting, we compute here only for analysis  # noqa: E501
+                metrics["action_mse"] = model.metric_func(
+                    data["pre_action"], action_seq
+                ).item()
+
+            policy_optim.zero_grad(set_to_none=True)
+            policy_scaler.scale(loss).backward()
+            policy_scaler.unscale_(policy_optim)
+            grad_norm = torch.nn.utils.clip_grad.clip_grad_norm_(
+                policy.parameters(), config["grad_clip"]
+            )
+            policy_scaler.step(policy_optim)
+            policy_scaler.update()
+            metrics["policy_grad_norm"] = grad_norm.item()
+
+            train_metric_tracker.add(metrics)
+
+        metrics = train_metric_tracker.get()
+        log.info(f"Training last for {time.time() - training_start_time:.3f} s")
+
+        if len(used_image_sensors) > 0 or test_env.set_state_from_obs_support:
+            log.info("Generating prediction videos ...")
+            metrics.update(
+                generate_prediction_videos(
+                    model,
+                    data,
+                    test_env,
+                    image_sensors,
+                    used_image_sensors,
+                    None,
+                    6,
+                    action_seq,
+                )
+            )
+
+        if e % config["test_period"] == 0:
+            log.info("Evaluating the model ...")
+            with torch.no_grad():
+                actor = PolicyActor(model, policy)
+                rewards = [
+                    interact_with_environment(test_env, actor, image_sensors)
+                    for _ in range(config["num_test_trajectories"])
+                ]
+                metrics["eval_reward_raw"] = rewards
+                metrics["eval_reward"] = np.mean(rewards)
+                metrics["eval_reward_std"] = np.std(rewards)
+            if render:
+                eval_dataset.update()
+                for image_key in image_sensors:
+                    metrics[f"eval_video_{image_key}"] = (
+                        eval_dataset.trajectories[-1][image_key]
+                        .permute(0, 2, 3, 1)
+                        .contiguous()
+                        * 255
+                    )
+
+        metrics = {"train/" + k: v for k, v in metrics.items()}
+        logger(metrics, e)
+        torch.save(model.state_dict(), os.path.join(output_folder, "model.pt"))
+        torch.save(policy.state_dict(), os.path.join(output_folder, "policy.pt"))
+
+    log.info("Evaluating the final model ...")
+    metrics = {}
+    with torch.no_grad():
+        actor = PolicyActor(model, policy)
+        rewards = [
+            interact_with_environment(test_env, actor, image_sensors)
+            for _ in range(config["final_num_test_trajectories"])
+        ]
+        metrics["eval_reward_raw"] = rewards
+        metrics["eval_reward"] = np.mean(rewards)
+        metrics["eval_reward_std"] = np.std(rewards)
+    if render:
+        eval_dataset.update()
+        for image_key in image_sensors:
+            metrics[f"eval_video_{image_key}"] = (
+                eval_dataset.trajectories[-1][image_key]
+                .permute(0, 2, 3, 1)
+                .contiguous()
+                * 255
+            )
+    logger(metrics, e + 1)
+    torch.save(model.state_dict(), os.path.join(output_folder, "model.pt"))
+    torch.save(policy.state_dict(), os.path.join(output_folder, "policy.pt"))
+
