@@ -20,4 +20,6 @@ if __name__ == "__main__":
     for input_folder in input_folders:
         data_names = sorted(os.listdir(input_folder))
         for data_name in data_names:
-            input_data_pa
+            input_data_path = os.path.join(input_folder, data_name)
+            output_data_path = os.path.join(output_folder, f"{index}.npz")
+      
