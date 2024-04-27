@@ -22,4 +22,5 @@ if __name__ == "__main__":
         for data_name in data_names:
             input_data_path = os.path.join(input_folder, data_name)
             output_data_path = os.path.join(output_folder, f"{index}.npz")
-      
+            index += 1
+            os.system(f"cp {input_data_path} {output_data_path}")
