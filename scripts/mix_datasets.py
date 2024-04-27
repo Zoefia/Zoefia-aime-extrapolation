@@ -18,4 +18,6 @@ if __name__ == "__main__":
 
     index = 0
     for input_folder in input_folders:
-       
+        data_names = sorted(os.listdir(input_folder))
+        for data_name in data_names:
+            input_data_pa
