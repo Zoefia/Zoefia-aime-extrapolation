@@ -233,3 +233,6 @@ def main(config: DictConfig):
     torch.save(model.state_dict(), os.path.join(output_folder, "model.pt"))
     torch.save(policy.state_dict(), os.path.join(output_folder, "policy.pt"))
 
+
+if __name__ == "__main__":
+    main()
