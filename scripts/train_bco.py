@@ -127,3 +127,108 @@ def main(config: DictConfig):
     embodiment_dataset_train, embodiment_dataset_val = torch.utils.data.random_split(
         embodiment_dataset, [train_size, val_size]
     )
+    train_loader = get_epoch_loader(
+        embodiment_dataset_train, config["batch_size"], shuffle=True, num_workers=4
+    )
+    val_loader = get_epoch_loader(
+        embodiment_dataset_val, config["batch_size"], shuffle=False, num_workers=4
+    )
+    e = 0
+    s = 0
+    best_val_loss = float("inf")
+    convergence_count = 0
+    while True:
+        log.info(f"Starting epcoh {e}")
+        metrics = {}
+        train_metric_tracker = AverageMeter()
+        for data in tqdm(iter(train_loader)):
+            data = data.to(device)
+            emb = idm_encoder(data)
+            emb = rearrange(emb, "t b f -> b (t f)")
+            predict_action = idm(emb)
+            loss = loss_fn(predict_action, data[-1]["pre_action"])
+
+            idm_optim.zero_grad()
+            loss.backward()
+            idm_optim.step()
+            s += 1
+
+            train_metric_tracker.add({"train/idm_loss": loss.item()})
+
+        metrics.update(train_metric_tracker.get())
+
+        val_metric_tracker = AverageMeter()
+        with torch.no_grad():
+            for data in tqdm(iter(val_loader)):
+                data = data.to(device)
+                emb = idm_encoder(data)
+                emb = rearrange(emb, "t b f -> b (t f)")
+                predict_action = idm(emb)
+                loss = loss_fn(predict_action, data[-1]["pre_action"])
+
+                val_metric_tracker.add({"val/idm_loss": loss.item()})
+
+        metrics.update(val_metric_tracker.get())
+
+        logger(metrics, e)
+
+        e += 1
+
+        if metrics["val/idm_loss"] < best_val_loss:
+            best_val_loss = metrics["val/idm_loss"]
+            torch.save(
+                idm_encoder.state_dict(), os.path.join(output_folder, "idm_encoder.pt")
+            )
+            torch.save(idm.state_dict(), os.path.join(output_folder, "idm.pt"))
+            convergence_count = 0
+        else:
+            convergence_count += 1
+            if (
+                convergence_count >= config["patience"]
+                and e >= config["min_idm_epoch"]
+                and s >= config["min_idm_steps"]
+            ):
+                break
+
+    log.info(f"IDM training finished in {e} epoches!")
+
+    # restore the best idm
+    idm_encoder.load_state_dict(
+        torch.load(os.path.join(output_folder, "idm_encoder.pt"))
+    )
+    idm.load_state_dict(torch.load(os.path.join(output_folder, "idm.pt")))
+    idm_encoder.requires_grad_(False)
+    idm.requires_grad_(False)
+
+    # I think reusing the weight is a good thing to go
+    policy_encoder.load_state_dict(idm_encoder.state_dict())
+
+    log.info("Training Policy ...")
+    train_size = int(
+        len(demonstration_dataset) * config["train_validation_split_ratio"]
+    )
+    val_size = len(demonstration_dataset) - train_size
+    (
+        demonstration_dataset_train,
+        demonstration_dataset_val,
+    ) = torch.utils.data.random_split(demonstration_dataset, [train_size, val_size])
+    train_loader = get_epoch_loader(
+        demonstration_dataset_train, config["batch_size"], shuffle=True, num_workers=4
+    )
+    val_loader = get_epoch_loader(
+        demonstration_dataset_val, config["batch_size"], shuffle=False, num_workers=4
+    )
+    e = 0
+    s = 0
+    best_val_loss = float("inf")
+    convergence_count = 0
+    while True:
+        log.info(f"Starting epcoh {e}")
+
+        metrics = {}
+        train_metric_tracker = AverageMeter()
+        for data in tqdm(iter(train_loader)):
+            data = data.to(device)
+            emb_idm = idm_encoder(data)
+            emb_idm = rearrange(emb_idm, "t b f -> b (t f)")
+            idm_action = idm(emb_idm)
