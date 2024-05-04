@@ -109,3 +109,118 @@ def main(config: DictConfig):
     (
         demonstration_dataset_train,
         demonstration_dataset_val,
+    ) = torch.utils.data.random_split(demonstration_dataset, [train_size, val_size])
+    train_loader = get_epoch_loader(
+        demonstration_dataset_train, config["batch_size"], shuffle=True, num_workers=4
+    )
+    val_loader = get_epoch_loader(
+        demonstration_dataset_val, config["batch_size"], shuffle=False, num_workers=4
+    )
+    e = 0
+    best_val_loss = float("inf")
+    convergence_count = 0
+    while True:
+        log.info(f"Starting epcoh {e}")
+
+        metrics = {}
+        train_metric_tracker = AverageMeter()
+        for data in tqdm(iter(train_loader)):
+            data = data.to(device)
+            emb_policy = policy_encoder(data[:-1])
+            emb_policy = rearrange(emb_policy, "t b f -> b (t f)")
+            policy_action = policy(emb_policy)
+            loss = loss_fn(data[-1]["pre_action"], policy_action)
+
+            policy_optim.zero_grad()
+            loss.backward()
+            policy_optim.step()
+
+            metric = {
+                "train/policy_loss": loss.item(),
+            }
+
+            train_metric_tracker.add(metric)
+
+        metrics.update(train_metric_tracker.get())
+
+        val_metric_tracker = AverageMeter()
+        with torch.no_grad():
+            for data in tqdm(iter(val_loader)):
+                data = data.to(device)
+                emb_policy = policy_encoder(data[:-1])
+                emb_policy = rearrange(emb_policy, "t b f -> b (t f)")
+                policy_action = policy(emb_policy)
+                loss = loss_fn(data[-1]["pre_action"], policy_action)
+
+                metric = {
+                    "val/policy_loss": loss.item(),
+                }
+
+                val_metric_tracker.add(metric)
+
+        metrics.update(val_metric_tracker.get())
+
+        log.info("Evaluating the model ...")
+        with torch.no_grad():
+            actor = StackPolicyActor(policy_encoder, policy, stack)
+            reward = interact_with_environment(test_env, actor, image_sensors)
+            metrics["eval_reward"] = reward
+        eval_dataset.update()
+        for image_key in image_sensors:
+            metrics[f"eval_video_{image_key}"] = (
+                eval_dataset.trajectories[-1][image_key]
+                .permute(0, 2, 3, 1)
+                .contiguous()
+                * 255
+            )
+
+        logger(metrics, e)
+
+        e += 1
+
+        if metrics["val/policy_loss"] < best_val_loss:
+            best_val_loss = metrics["val/policy_loss"]
+            torch.save(
+                policy_encoder.state_dict(),
+                os.path.join(output_folder, "policy_encoder.pt"),
+            )
+            torch.save(policy.state_dict(), os.path.join(output_folder, "policy.pt"))
+            convergence_count = 0
+        else:
+            convergence_count += 1
+            if (
+                convergence_count >= config["patience"]
+                and e >= config["min_policy_epoch"]
+            ):
+                break
+
+    log.info(f"Policy training finished in {e} epoches!")
+
+    # restore the best policy for a final test
+    policy_encoder.load_state_dict(
+        torch.load(os.path.join(output_folder, "policy_encoder.pt"))
+    )
+    policy.load_state_dict(torch.load(os.path.join(output_folder, "policy.pt")))
+
+    metrics = {}
+    with torch.no_grad():
+        actor = StackPolicyActor(policy_encoder, policy, stack)
+        rewards = [
+            interact_with_environment(test_env, actor, image_sensors)
+            for _ in range(config["num_test_trajectories"])
+        ]
+        metrics["eval_reward_raw"] = rewards
+        metrics["eval_reward"] = np.mean(rewards)
+        metrics["eval_reward_std"] = np.std(rewards)
+    eval_dataset.update()
+    for image_key in image_sensors:
+        metrics[f"eval_video_{image_key}"] = (
+            eval_dataset.trajectories[-1][image_key].permute(0, 2, 3, 1).contiguous()
+            * 255
+        )
+
+    logger(metrics, e)
+
+
+if __name__ == "__main__":
+    main()
