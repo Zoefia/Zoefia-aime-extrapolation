@@ -76,3 +76,120 @@ def main(config: DictConfig):
     decoder_configs = config["decoders"]
     sensor_shapes = get_sensor_shapes(data)
     input_sensors, output_sensors, _ = get_inputs_outputs(
+        sensor_layout, config["environment_setup"]
+    )
+    multimodal_encoder_config = [
+        (k, sensor_shapes[k], dict(encoder_configs[sensor_layout[k]["modility"]]))
+        for k in input_sensors
+    ]
+    multimodal_decoder_config = [
+        (k, sensor_shapes[k], dict(decoder_configs[sensor_layout[k]["modility"]]))
+        for k in output_sensors
+    ]
+    image_sensors = [k for k, v in sensor_layout.items() if v["modility"] == "visual"]
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    log.info(f"using device {device}")
+    # for mdp and lpomdp, this is just concatenate
+    model_encoder = MultimodalEncoder(multimodal_encoder_config)
+    model_encoder = model_encoder.to(device)
+
+    # not sure whether we should share the encoder weights
+    policy_encoder = MultimodalEncoder(multimodal_encoder_config)
+    policy_encoder = policy_encoder.to(device)
+
+    model = MultimodalDecoder(
+        model_encoder.output_dim * stack + sensor_shapes["pre_action"],
+        multimodal_decoder_config,
+    )
+    model = model.to(device)
+
+    policy_config = config["policy"]
+    policy = MLP(
+        policy_encoder.output_dim * stack,
+        sensor_shapes["pre_action"],
+        output_activation="tanh",
+        **policy_config,
+    )
+    policy = policy.to(device)
+
+    loss_fn = torch.nn.MSELoss()
+
+    logger = get_default_logger(output_folder)
+
+    model_optim = torch.optim.Adam(
+        [*model.parameters(), *model_encoder.parameters()], lr=config["model_lr"]
+    )
+    policy_optim = torch.optim.Adam(
+        [*policy.parameters(), *policy_encoder.parameters()], lr=config["policy_lr"]
+    )
+
+    log.info("Training Forward Model ...")
+    train_size = int(len(embodiment_dataset) * config["train_validation_split_ratio"])
+    val_size = len(embodiment_dataset) - train_size
+    embodiment_dataset_train, embodiment_dataset_val = torch.utils.data.random_split(
+        embodiment_dataset, [train_size, val_size]
+    )
+    train_loader = get_epoch_loader(
+        embodiment_dataset_train, config["batch_size"], shuffle=True, num_workers=4
+    )
+    val_loader = get_epoch_loader(
+        embodiment_dataset_val, config["batch_size"], shuffle=False, num_workers=4
+    )
+    e = 0
+    s = 0
+    best_val_loss = float("inf")
+    convergence_count = 0
+    while True:
+        log.info(f"Starting epcoh {e}")
+        metrics = {}
+        train_metric_tracker = AverageMeter()
+        for data in tqdm(iter(train_loader)):
+            data = data.to(device)
+            emb = model_encoder(data[:-1])
+            inputs = torch.cat([*emb, data["pre_action"][-1]], dim=-1)
+            predict_next_obs = model(inputs)
+            loss = sum(
+                [
+                    loss_fn(predict_next_obs[k], data[k][-1])
+                    for k in predict_next_obs.keys()
+                ]
+            )
+
+            model_optim.zero_grad()
+            loss.backward()
+            model_optim.step()
+            s += 1
+
+            train_metric_tracker.add({"train/model_loss": loss.item()})
+
+        metrics.update(train_metric_tracker.get())
+
+        val_metric_tracker = AverageMeter()
+        with torch.no_grad():
+            for data in tqdm(iter(val_loader)):
+                data = data.to(device)
+                emb = model_encoder(data[:-1])
+                inputs = torch.cat([*emb, data["pre_action"][-1]], dim=-1)
+                predict_next_obs = model(inputs)
+                loss = sum(
+                    [
+                        loss_fn(predict_next_obs[k], data[k][-1])
+                        for k in predict_next_obs.keys()
+                    ]
+                )
+
+                val_metric_tracker.add({"val/model_loss": loss.item()})
+
+        metrics.update(val_metric_tracker.get())
+
+        logger(metrics, e)
+
+        e += 1
+
+        if metrics["val/model_loss"] < best_val_loss:
+            best_val_loss = metrics["val/model_loss"]
+            torch.save(
+                model_encoder.state_dict(),
+                os.path.join(output_folder, "model_encoder.pt"),
+            )
