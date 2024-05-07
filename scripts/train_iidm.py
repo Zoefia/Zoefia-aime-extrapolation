@@ -193,3 +193,102 @@ def main(config: DictConfig):
                 model_encoder.state_dict(),
                 os.path.join(output_folder, "model_encoder.pt"),
             )
+            torch.save(model.state_dict(), os.path.join(output_folder, "model.pt"))
+            convergence_count = 0
+        else:
+            convergence_count += 1
+            if (
+                convergence_count >= config["patience"]
+                and e >= config["min_model_epoch"]
+                and s >= config["min_model_steps"]
+            ):
+                break
+
+    log.info(f"Model training finished in {e} epoches!")
+
+    # restore the best model
+    model_encoder.load_state_dict(
+        torch.load(os.path.join(output_folder, "model_encoder.pt"))
+    )
+    model.load_state_dict(torch.load(os.path.join(output_folder, "model.pt")))
+    model_encoder.requires_grad_(False)
+    model.requires_grad_(False)
+
+    # I think reusing the weight is a good thing to go
+    policy_encoder.load_state_dict(model_encoder.state_dict())
+
+    log.info("Training Policy ...")
+    train_size = int(
+        len(demonstration_dataset) * config["train_validation_split_ratio"]
+    )
+    val_size = len(demonstration_dataset) - train_size
+    (
+        demonstration_dataset_train,
+        demonstration_dataset_val,
+    ) = torch.utils.data.random_split(demonstration_dataset, [train_size, val_size])
+    train_loader = get_epoch_loader(
+        demonstration_dataset_train, config["batch_size"], shuffle=True, num_workers=4
+    )
+    val_loader = get_epoch_loader(
+        demonstration_dataset_val, config["batch_size"], shuffle=False, num_workers=4
+    )
+    e = 0
+    s = 0
+    best_val_loss = float("inf")
+    convergence_count = 0
+    while True:
+        log.info(f"Starting epcoh {e}")
+
+        metrics = {}
+        train_metric_tracker = AverageMeter()
+        for data in tqdm(iter(train_loader)):
+            data = data.to(device)
+            emb_model = model_encoder(data[:-1])
+            emb_policy = policy_encoder(data[:-1])
+            policy_action = policy(torch.concat([*emb_policy], dim=-1))
+            inputs = torch.cat([*emb_model, policy_action], dim=-1)
+            predict_next_obs_model = model(inputs)
+            loss = sum(
+                [
+                    loss_fn(predict_next_obs_model[k], data[k][-1])
+                    for k in predict_next_obs_model.keys()
+                ]
+            )
+            # NOTE: these two loss below is not possible to compute for the
+            #       real setting, we only compute them for debugging.
+            policy_to_real_loss = loss_fn(policy_action, data[-1]["pre_action"])
+
+            policy_optim.zero_grad()
+            loss.backward()
+            policy_optim.step()
+            s += 1
+
+            metric = {
+                "train/policy_loss": loss.item(),
+                "train/policy_to_real_loss": policy_to_real_loss.item(),
+            }
+
+            train_metric_tracker.add(metric)
+
+        metrics.update(train_metric_tracker.get())
+
+        val_metric_tracker = AverageMeter()
+        with torch.no_grad():
+            for data in tqdm(iter(val_loader)):
+                data = data.to(device)
+                emb_model = model_encoder(data[:-1])
+                emb_policy = policy_encoder(data[:-1])
+                policy_action = policy(torch.concat([*emb_policy], dim=-1))
+                inputs = torch.cat([*emb_model, policy_action], dim=-1)
+                predict_next_obs_model = model(inputs)
+                loss = sum(
+                    [
+                        loss_fn(predict_next_obs_model[k], data[k][-1])
+                        for k in predict_next_obs_model.keys()
+                    ]
+                )
+                # NOTE: these two loss below is not possible to compute for the
+                #       real setting, we only compute them for debugging.
+                policy_to_real_loss = loss_fn(policy_action, data[-1]["pre_action"])
+
+                metric = {
