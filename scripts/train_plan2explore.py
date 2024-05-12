@@ -158,3 +158,102 @@ def main(config: DictConfig):
                 device_type=device, dtype=torch.float16, enabled=config["use_fp16"]
             ):
                 _, state_seq, loss, metrics = model(data, data["pre_action"])
+
+            model_optim.zero_grad(set_to_none=True)
+            model_scaler.scale(loss).backward()
+            model_scaler.unscale_(model_optim)
+            grad_norm = torch.nn.utils.clip_grad.clip_grad_norm_(
+                model.parameters(), config["grad_clip"]
+            )
+            model_scaler.step(model_optim)
+            model_scaler.update()
+            metrics["model_grad_norm"] = grad_norm.item()
+
+            # rollout for longer
+            states = model.flatten_states(state_seq)
+            states.vmap_(lambda v: v.detach())
+            with torch.autocast(
+                device_type=device, dtype=torch.float16, enabled=config["use_fp16"]
+            ):
+                state_seq, _, outputs = model.rollout_with_policy(
+                    states,
+                    policy,
+                    config["imagine_horizon"],
+                    names=[],
+                    state_detach=True,
+                    action_sample=True,
+                )
+
+                state_features = torch.stack(
+                    [model.get_state_feature(state) for state in state_seq]
+                )
+                reward = outputs["intrinsic_reward"]
+                value = vnet(state_features) / (1 - config["gamma"])
+
+                discount = config["gamma"] * torch.ones_like(reward)
+                returns = lambda_return(
+                    reward[:-1], value[:-1], discount[:-1], value[-1], config["lambda"]
+                )
+                discount = torch.cumprod(discount, dim=0)
+
+                policy_loss = -torch.mean(discount[:-1] * returns)
+                metrics["policy_loss"] = policy_loss.item()
+                policy_entropy_loss = config["policy_entropy_scale"] * torch.mean(
+                    outputs["action_entropy"].sum(dim=-1)
+                )
+                metrics["policy_entropy_loss"] = policy_entropy_loss.item()
+                policy_loss = policy_loss + policy_entropy_loss
+
+            policy_optim.zero_grad(set_to_none=True)
+            policy_scaler.scale(policy_loss).backward()
+            policy_scaler.unscale_(policy_optim)
+            grad_norm = torch.nn.utils.clip_grad.clip_grad_norm_(
+                policy.parameters(), config["grad_clip"]
+            )
+            policy_scaler.step(policy_optim)
+            policy_scaler.update()
+            metrics["policy_grad_norm"] = grad_norm.item()
+
+            with torch.autocast(
+                device_type=device, dtype=torch.float16, enabled=config["use_fp16"]
+            ):
+                value = vnet(state_features[:-1].detach())
+                value_loss = 0.5 * torch.mean(
+                    (returns.detach() * (1 - config["gamma"]) - value) ** 2
+                )
+                metrics["value_loss"] = value_loss.item()
+
+            vnet_optim.zero_grad(set_to_none=True)
+            vnet_scaler.scale(value_loss).backward()
+            vnet_scaler.unscale_(vnet_optim)
+            grad_norm = torch.nn.utils.clip_grad.clip_grad_norm_(
+                vnet.parameters(), config["grad_clip"]
+            )
+            vnet_scaler.step(vnet_optim)
+            vnet_scaler.update()
+            metrics["vnet_grad_norm"] = grad_norm.item()
+
+            train_metric_tracker.add(metrics)
+
+        metrics = train_metric_tracker.get()
+        log.info(f"Training last for {time.time() - training_start_time:.3f} s")
+
+        log.info("Collecting new data ...")
+        with torch.no_grad():
+            actor = PolicyActor(model, policy, eval=True)
+            actor = GuassianNoiseActorWrapper(
+                actor, config["epsilon"], env.action_space
+            )
+            reward = interact_with_environment(env, actor, image_sensors)
+            metrics["train_reward"] = reward
+
+        dataset.update()
+
+        if e % 10 == 0:
+            log.info("Evaluating the model ...")
+            with torch.no_grad():
+                actor = PolicyActor(model, policy)
+                reward = interact_with_environment(test_env, actor, image_sensors)
+                metrics["eval_reward"] = reward
+            eval_dataset.update()
+            for image_key in image_sensors:
