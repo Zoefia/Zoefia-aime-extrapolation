@@ -257,3 +257,29 @@ def main(config: DictConfig):
                 metrics["eval_reward"] = reward
             eval_dataset.update()
             for image_key in image_sensors:
+                metrics[f"eval_video_{image_key}"] = (
+                    eval_dataset.trajectories[-1][image_key]
+                    .permute(0, 2, 3, 1)
+                    .contiguous()
+                    * 255
+                )
+
+            if len(used_image_sensors) > 0 or test_env.set_state_from_obs_support:
+                log.info("Generating prediction videos ...")
+                metrics.update(
+                    generate_prediction_videos(
+                        model, data, test_env, image_sensors, used_image_sensors, 10, 6
+                    )
+                )
+
+            log.info("Saving the models ...")
+            torch.save(model.state_dict(), os.path.join(output_folder, "model.pt"))
+            torch.save(policy.state_dict(), os.path.join(output_folder, "policy.pt"))
+            torch.save(vnet.state_dict(), os.path.join(output_folder, "vnet.pt"))
+
+        metrics = {"train/" + k: v for k, v in metrics.items()}
+        logger(metrics, e)
+
+
+if __name__ == "__main__":
+    main()
